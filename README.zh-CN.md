@@ -131,7 +131,29 @@ beacon start -d
 | `BEACON_PORT` | `4517` | 守护进程端口(仅本机) |
 | `BEACON_GUARD` | `warn` | `warn` = 建议式上下文 · `ask` = 破坏性 git 操作需确认 · `off` = 只上报、从不警告 |
 | `BEACON_TTL_MS` | `900000` | 一条活动无心跳能存活多久(15 分钟)—— 崩溃的会话会自动清除 |
-| `BEACON_HOME` | `~/.beacon` | 守护进程存放 pidfile 和活动日志的位置 |
+| `BEACON_LOG_LEVEL` | `info` | `error` · `warn` · `info` · `debug`。错误/警告永远记录;`debug` 会记录每一次上报。 |
+| `BEACON_HOME` | `~/.beacon` | 守护进程存放 pidfile、活动日志和 `beacon.log` 的位置 |
+
+---
+
+## 排障与反馈 bug
+
+Beacon 默认是"静默失败即放行"—— 所以出问题时,线索在**本地日志**里,而不是你的终端。
+
+```bash
+beacon logs                 # 最后 200 行 + 日志路径
+beacon logs --tail 50       # 少看几行
+beacon logs --path          # 只打印文件路径(~/.beacon/beacon.log)
+beacon logs --clear         # 清空
+```
+
+错误和警告(包括每一次因守护进程不可达而 *fail open* 的情况)都会被记录。想在复现问题时拿到完整轨迹,用更详细的级别重启:
+
+```bash
+BEACON_LOG_LEVEL=debug beacon start   # 记录每一次上报和工具调用
+```
+
+发现 bug?请[提个 issue](https://github.com/a1473838623/agent-beacon/issues/new?template=bug_report.yml),把 `beacon logs` 的输出贴上来(**贴之前先看一眼** —— 里面可能含你项目的文件路径)。日志 100% 本地,除非你自己贴出来,否则不会发往任何地方。
 
 ---
 

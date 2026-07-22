@@ -1,0 +1,52 @@
+name: 🐛 Bug report
+description: Something went wrong with Beacon
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Beacon logs locally, so please include the log — it usually pinpoints the issue.
+        Get it with `beacon logs` (it prints the last lines and the file path). **Review it before pasting** — it may contain file paths from your project.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Beacon log
+      description: Output of `beacon logs --tail 50` (run with `BEACON_LOG_LEVEL=debug` beforehand for more detail if you can reproduce).
+      render: text
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `beacon status` (or your Beacon version) and how you installed it.
+      placeholder: "beacon v0.3.0 · npm link"
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: Which client?
+      multiple: true
+      options:
+        - Claude Code (hook)
+        - Codex (MCP)
+        - Cursor / Cline / Windsurf / Zed (MCP)
+        - beacon watch / with_report / HTTP
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS & Node version
+      placeholder: "Windows 11 / macOS 14 / Ubuntu 24.04 · node -v"
+    validations:
+      required: true

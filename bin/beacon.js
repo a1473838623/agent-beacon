@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { LOGFILE } from '../src/log.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -73,6 +74,23 @@ async function cmdStatus() {
   for (const a of activities) {
     console.log(`  • [${a.action}] ${a.target || '(working tree)'}  — ${a.actorLabel || a.actor}`);
   }
+  console.log(`\nlog: ${LOGFILE}   (view with: beacon logs)`);
+}
+
+function cmdLogs(args) {
+  const o = parseFlags(args);
+  if ('path' in o) return console.log(LOGFILE);
+  if ('clear' in o) {
+    try { fs.rmSync(LOGFILE, { force: true }); fs.rmSync(LOGFILE + '.1', { force: true }); } catch { /* */ }
+    return console.log('log cleared: ' + LOGFILE);
+  }
+  const n = Number(o.tail || o.n) || 200;
+  if (!fs.existsSync(LOGFILE)) return console.log(`(no log yet at ${LOGFILE})`);
+  const lines = fs.readFileSync(LOGFILE, 'utf8').split('\n').filter(Boolean);
+  console.log(`# ${LOGFILE}  (last ${Math.min(n, lines.length)} of ${lines.length} lines)\n`);
+  console.log(lines.slice(-n).join('\n'));
+  console.log(`\n# Reporting a bug? Attach the above (review it first) at:`);
+  console.log(`#   https://github.com/a1473838623/agent-beacon/issues/new`);
 }
 
 async function cmdReport(args) {
@@ -198,7 +216,8 @@ Usage:
   beacon mcp                 Run the stdio MCP server (spawned by Codex/Cursor/etc.)
   beacon start [-d]          Start the daemon (-d = detached/background)
   beacon stop                Stop the daemon
-  beacon status              Show active agents
+  beacon status              Show active agents (and the log path)
+  beacon logs [--tail N]     Show the local log (--clear to wipe, --path to print path)
   beacon watch <dir>         Report file edits from ANY editor/agent in <dir>
   beacon report --actor X --action editing --target <path> [--done]
   beacon dashboard           Print the dashboard URL
@@ -216,6 +235,7 @@ const [cmd, ...args] = process.argv.slice(2);
     case 'watch': return cmdWatch(args);
     case 'init': return cmdInit(args);
     case 'mcp': return void import(MCP); // stdio MCP server (spawned by Codex/Cursor/etc.)
+    case 'logs': return cmdLogs(args);
     case 'dashboard': return console.log(BASE);
     case undefined:
     case '-h':

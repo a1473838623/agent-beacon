@@ -9,6 +9,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { log } from '../src/log.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.BEACON_PORT) || 4517;
@@ -41,9 +42,10 @@ async function report(body) {
     });
     const j = await r.json();
     return j.conflicts || [];
-  } catch {
+  } catch (e) {
     // Daemon likely down: lazy-start it for next time, but fail open now.
-    try { spawn(process.execPath, [path.join(__dirname, '..', 'src', 'daemon.js')], { detached: true, stdio: 'ignore' }).unref(); } catch { /* */ }
+    log('warn', 'hook', 'daemon unreachable, failing open (will lazy-start): ' + (e && e.message || e));
+    try { spawn(process.execPath, [path.join(__dirname, '..', 'src', 'daemon.js')], { detached: true, stdio: 'ignore' }).unref(); } catch (e2) { log('error', 'hook', 'lazy-start failed: ' + (e2 && e2.message || e2)); }
     return null;
   } finally { clearTimeout(t); }
 }
@@ -97,4 +99,4 @@ async function main() {
   return emit({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: msg } });
 }
 
-main().catch(() => allow());
+main().catch((e) => { log('error', 'hook', 'unexpected error, failing open: ' + (e && e.stack || e)); allow(); });

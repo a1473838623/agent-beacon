@@ -131,7 +131,29 @@ All optional — sensible defaults out of the box. Set as environment variables.
 | `BEACON_PORT` | `4517` | Daemon port (localhost only) |
 | `BEACON_GUARD` | `warn` | `warn` = advisory context · `ask` = require confirm on destructive git ops · `off` = report only, never warn |
 | `BEACON_TTL_MS` | `900000` | How long an activity lives without a heartbeat (15 min) — crashed sessions self-clear |
-| `BEACON_HOME` | `~/.beacon` | Where the daemon stores its pidfile and activity log |
+| `BEACON_LOG_LEVEL` | `info` | `error` · `warn` · `info` · `debug`. Errors/warnings are always recorded; `debug` traces every report. |
+| `BEACON_HOME` | `~/.beacon` | Where the daemon stores its pidfile, activity log, and `beacon.log` |
+
+---
+
+## Troubleshooting & reporting bugs
+
+Beacon fails open silently by design — so if something's off, the trail is in the **local log**, not your terminal.
+
+```bash
+beacon logs                 # last 200 lines + the log path
+beacon logs --tail 50       # fewer lines
+beacon logs --path          # just print the file path (~/.beacon/beacon.log)
+beacon logs --clear         # wipe it
+```
+
+Errors and warnings (including every time the hook *fails open* because the daemon was unreachable) are always logged. For a full trace while reproducing a problem, restart with more detail:
+
+```bash
+BEACON_LOG_LEVEL=debug beacon start   # logs every report and tool call
+```
+
+Found a bug? Please [open an issue](https://github.com/a1473838623/agent-beacon/issues/new?template=bug_report.yml) and paste `beacon logs` output (**review it first** — it can contain file paths from your project). The log is 100% local; nothing is ever sent anywhere unless you attach it yourself.
 
 ---
 

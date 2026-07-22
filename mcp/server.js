@@ -9,6 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { log } from '../src/log.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
@@ -114,6 +115,7 @@ async function handle(msg) {
         return err(id, -32601, 'unknown tool: ' + name);
       } catch (e) {
         // Fail soft — never break the client's turn.
+        log('warn', 'mcp', `tool '${name}' failed (fail-open): ` + (e && e.message || e));
         return textResult(id, 'Beacon is unavailable right now (fail-open, no coordination this call).', true);
       }
     }

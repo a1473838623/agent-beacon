@@ -2,6 +2,18 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.3.0] — 2026-07-22
+
+### Added
+- **Local logging** (`src/log.js`) — best-effort, never throws, never blocks the fail-open path. Errors/warnings are always recorded (including every time the hook fails open because the daemon was unreachable); `info` covers daemon lifecycle and overlaps; `debug` traces every report. Written to `$BEACON_HOME/beacon.log`, rotated at ~1 MB. Level via `BEACON_LOG_LEVEL` / `BEACON_DEBUG`.
+- **`beacon logs`** — view the log (`--tail N`, `--path`, `--clear`); `beacon status` now prints the log path.
+- Logging wired into daemon (lifecycle, errors, overlaps, uncaught exceptions), the Claude Code hook (why it failed open), and the MCP server (tool failures).
+- **Bug-report issue template** (`.github/ISSUE_TEMPLATE/bug_report.yml`) that asks for `beacon logs`, version, client, and OS.
+- Docs: "Troubleshooting & reporting bugs" section in both READMEs.
+
+### Note
+- The log is 100% local; nothing is ever transmitted. Review before attaching to an issue — it can contain project file paths.
+
 ## [0.2.0] — 2026-07-22
 
 ### Added

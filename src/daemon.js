@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Store, BEACON_HOME } from './store.js';
+import { log } from './log.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.BEACON_PORT) || 4517;
@@ -32,7 +33,14 @@ const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost');
 
   if (req.method === 'POST' && u.pathname === '/report') {
-    return json(res, 200, store.report(await readBody(req)));
+    const body = await readBody(req);
+    const result = store.report(body);
+    if (result.conflicts && result.conflicts.length) {
+      log('info', 'daemon', 'overlap detected', { actor: body.actor, target: body.target, others: result.conflicts.length });
+    } else {
+      log('debug', 'daemon', 'report', { actor: body.actor, action: body.action, target: body.target });
+    }
+    return json(res, 200, result);
   }
   if (req.method === 'GET' && u.pathname === '/activity') {
     return json(res, 200, { activities: store.list(u.searchParams.get('exclude')) });
@@ -62,18 +70,25 @@ const server = http.createServer(async (req, res) => {
 server.on('error', (e) => {
   if (e.code === 'EADDRINUSE') {
     // Another daemon already owns the port — that's fine, exit quietly.
+    log('info', 'daemon', `port ${PORT} already in use; another daemon owns it, exiting`);
     process.exit(0);
   }
+  log('error', 'daemon', 'server error: ' + e.message);
   console.error('beacon daemon error:', e.message);
   process.exit(1);
 });
 
 server.listen(PORT, '127.0.0.1', () => {
   try { fs.writeFileSync(PIDFILE, String(process.pid)); } catch { /* */ }
+  log('info', 'daemon', 'listening', { port: PORT, version: pkg.version });
   console.log(`beacon v${pkg.version} listening on http://127.0.0.1:${PORT}  (dashboard in your browser)`);
 });
 
+process.on('uncaughtException', (e) => { log('error', 'daemon', 'uncaughtException: ' + (e && e.stack || e)); process.exit(1); });
+process.on('unhandledRejection', (e) => { log('error', 'daemon', 'unhandledRejection: ' + (e && e.message || e)); });
+
 function shutdown() {
+  log('info', 'daemon', 'shutting down');
   try { if (fs.existsSync(PIDFILE) && fs.readFileSync(PIDFILE, 'utf8') === String(process.pid)) fs.unlinkSync(PIDFILE); } catch { /* */ }
   process.exit(0);
 }
