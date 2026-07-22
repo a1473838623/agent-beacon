@@ -111,7 +111,14 @@ beacon start -d
 
 **Cursor / Cline / Windsurf / Zed / Claude Agent SDK:** 把该客户端的 MCP 配置指向本服务器(`command: node`,`args: ["<安装路径>/mcp/server.js"]`;若 `beacon` 已在 PATH 上,直接用 `beacon mcp`)。
 
-> **为什么 Codex 不一样:** Codex 的 hook 只在 Bash 上触发(不含文件写入),也无法注入上下文。所以 Codex 走的是 **MCP 的 report/query**(通过那行 `AGENTS.md` 指令让它主动用),而不是 Claude Code 那种"每次编辑前自动被警告"的全自动体验。但无论哪种,一个 Codex 会话都会对*其他所有* agent 可见 —— 而且用 `beacon watch`,它的文件编辑无需任何 Codex 配置就能显示出来。
+**Codex 目前能得到什么 —— 说清楚,别有预期落差:**
+
+- ✅ **对其他所有 agent 可见。** Codex 的活动会出现在面板上、以及别人的警告里 —— 走 MCP 工具,或者用 `beacon watch` 时*零* Codex 配置就可见。
+- ✅ **能自己查冲突。** Codex 可以调用 `get_activity` / `report_activity` —— 但只有你加了上面那行 `AGENTS.md` 指令,它才会主动调(否则工具可用,但模型不会自发去用)。
+- ❌ **Codex *内部*没有"编辑前自动警告"。** 和 Claude Code 不同,Codex 无法在编辑前被注入警告:它的 hook 只在 Bash 上触发(不含文件写入),也无法注入上下文。这是 Codex 平台的限制,不是 Beacon 的。
+- 🔜 **冲突时硬阻断破坏性 git** —— 规划中,靠一个 Codex Bash hook(Codex 的 hook *能* deny)。见[路线图](#路线图)。
+
+一句话:**Claude Code = 全自动、每次编辑前被警告;Codex = 对所有人可见 + 可按需查询,但不会被自动警告。**
 
 ---
 

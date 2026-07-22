@@ -111,7 +111,14 @@ Optionally add one line to your `AGENTS.md` so Codex uses it proactively:
 
 **Cursor / Cline / Windsurf / Zed / Claude Agent SDK:** point the client's MCP config at the server (`command: node`, `args: ["<install>/mcp/server.js"]`, or just `beacon mcp` if `beacon` is on PATH).
 
-> **Why Codex is different:** Codex hooks only fire on Bash (not file writes) and can't inject context, so Codex gets **report/query via MCP** (opt-in through that `AGENTS.md` line) rather than Claude Code's fully-automatic, warned-before-every-edit flow. Either way, a Codex session becomes visible to *every other* agent — and with `beacon watch` its file edits show up with zero Codex config at all.
+**What Codex gets today — be clear-eyed:**
+
+- ✅ **Visible to every other agent.** Codex's activity shows on the dashboard and in other agents' warnings — via the MCP tools, or with *zero* Codex config via `beacon watch`.
+- ✅ **Can check for collisions itself.** Codex can call `get_activity` / `report_activity` — proactively only if you add the `AGENTS.md` line above (otherwise it's available but the model won't call it on its own).
+- ❌ **No automatic pre-edit warning *inside* Codex.** Unlike Claude Code, Codex can't have a warning injected before an edit: its hooks fire only on Bash (not file writes) and can't add context. This is a Codex platform limitation, not a Beacon one.
+- 🔜 **Hard-block destructive git on conflict** — planned, via a Codex Bash hook (Codex hooks *can* deny). See the [roadmap](#roadmap).
+
+In short: **Claude Code = fully automatic, warned before every edit. Codex = visible to everyone + can query on request, but not auto-warned.**
 
 ---
 
