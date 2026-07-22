@@ -6,6 +6,8 @@
 
 Run two, five, ten Claude Code sessions on the same repo at once — and **never let them clobber each other's work again.**
 
+**English** · [简体中文](README.zh-CN.md)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-4c9aff.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-3fb950.svg)](https://nodejs.org)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-3fb950.svg)](package.json)
