@@ -13,6 +13,7 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const BEACON_HOME = process.env.BEACON_HOME || path.join(os.homedir(), '.beacon');
 const DAEMON = path.join(ROOT, 'src', 'daemon.js');
 const HOOK = path.join(ROOT, 'hooks', 'pretooluse.js');
+const MCP = path.join(ROOT, 'mcp', 'server.js');
 
 async function fetchJson(pathn, opts, timeoutMs = 1500) {
   const ac = new AbortController();
@@ -123,6 +124,7 @@ async function cmdWatch(args) {
 }
 
 function cmdInit(args) {
+  if (args.includes('--codex')) return cmdInitCodex(args);
   const global = args.includes('--global');
   const dir = global ? path.join(os.homedir(), '.claude') : path.join(process.cwd(), '.claude');
   const file = path.join(dir, 'settings.json');
@@ -150,6 +152,29 @@ function cmdInit(args) {
   console.log('\nThat\'s it. New Claude Code sessions in this project now report activity automatically.');
 }
 
+// Register the Beacon MCP server for Codex (and any MCP client that reads Codex-style TOML).
+function cmdInitCodex(args) {
+  const project = args.includes('--project');
+  const dir = project ? path.join(process.cwd(), '.codex') : path.join(os.homedir(), '.codex');
+  const file = path.join(dir, 'config.toml');
+  fs.mkdirSync(dir, { recursive: true });
+  const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  if (existing.includes('[mcp_servers.beacon]')) {
+    console.log(`✓ Beacon MCP server already registered in ${file}`);
+  } else {
+    const argsToml = `["${MCP.replace(/\\/g, '\\\\')}"]`;
+    const block = `${existing && !existing.endsWith('\n') ? '\n' : ''}\n[mcp_servers.beacon]\ncommand = "node"\nargs = ${argsToml}\n`;
+    fs.appendFileSync(file, block);
+    console.log(`✓ Beacon MCP server registered in ${file}`);
+  }
+  console.log('\nNext:');
+  console.log('  beacon start -d      # start the local daemon');
+  console.log('\nOptional — add one line to your AGENTS.md so Codex uses it automatically:');
+  console.log('  "Before editing a file or running a risky command, call the beacon');
+  console.log('   get_activity / report_activity tools to avoid colliding with other agents."');
+  console.log('\nCodex sessions can now see and report activity via the beacon MCP tools.');
+}
+
 function parseFlags(args) {
   const o = {};
   for (let i = 0; i < args.length; i++) {
@@ -169,6 +194,8 @@ function help() {
 
 Usage:
   beacon init [--global]     Install the Claude Code hook (project or user level)
+  beacon init --codex        Register the MCP server for Codex (~/.codex/config.toml)
+  beacon mcp                 Run the stdio MCP server (spawned by Codex/Cursor/etc.)
   beacon start [-d]          Start the daemon (-d = detached/background)
   beacon stop                Stop the daemon
   beacon status              Show active agents
@@ -188,6 +215,7 @@ const [cmd, ...args] = process.argv.slice(2);
     case 'report': return cmdReport(args);
     case 'watch': return cmdWatch(args);
     case 'init': return cmdInit(args);
+    case 'mcp': return void import(MCP); // stdio MCP server (spawned by Codex/Cursor/etc.)
     case 'dashboard': return console.log(BASE);
     case undefined:
     case '-h':

@@ -1,0 +1,15 @@
+# Example Codex MCP registration for Beacon.
+# `beacon init --codex` writes this block into ~/.codex/config.toml for you
+# (append-only, it won't touch the rest of your config).
+#
+# Replace ABSOLUTE_PATH_TO with your install path, or just run `beacon init --codex`.
+
+[mcp_servers.beacon]
+command = "node"
+args = ["ABSOLUTE_PATH_TO/agent-beacon/mcp/server.js"]
+
+# Then start the daemon once:  beacon start -d
+#
+# Optional — add this line to your AGENTS.md so Codex uses Beacon proactively:
+#   "Before editing a file or running a risky command, call the beacon
+#    get_activity / report_activity tools to avoid colliding with other agents."
