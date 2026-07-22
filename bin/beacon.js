@@ -141,50 +141,109 @@ async function cmdWatch(args) {
   });
 }
 
-function cmdInit(args) {
-  if (args.includes('--codex')) return cmdInitCodex(args);
-  const global = args.includes('--global');
-  const dir = global ? path.join(os.homedir(), '.claude') : path.join(process.cwd(), '.claude');
-  const file = path.join(dir, 'settings.json');
-  fs.mkdirSync(dir, { recursive: true });
+function claudeFile(level) {
+  const dir = level === 'project' ? path.join(process.cwd(), '.claude') : path.join(os.homedir(), '.claude');
+  return path.join(dir, 'settings.json');
+}
+
+function installClaudeHook(file) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   let settings = {};
   if (fs.existsSync(file)) { try { settings = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { settings = {}; } }
   settings.hooks = settings.hooks || {};
   settings.hooks.PreToolUse = settings.hooks.PreToolUse || [];
+  if (JSON.stringify(settings.hooks.PreToolUse).includes('pretooluse.js')) return 'present';
+  settings.hooks.PreToolUse.push({ matcher: 'Edit|Write|MultiEdit|Bash', hooks: [{ type: 'command', command: `node "${HOOK}"` }] });
+  fs.writeFileSync(file, JSON.stringify(settings, null, 2));
+  return 'added';
+}
 
-  const command = `node "${HOOK}"`;
-  const already = JSON.stringify(settings.hooks.PreToolUse).includes(HOOK.replace(/\\/g, '\\\\'));
-  if (!already) {
-    settings.hooks.PreToolUse.push({
-      matcher: 'Edit|Write|MultiEdit|Bash',
-      hooks: [{ type: 'command', command }],
-    });
-    fs.writeFileSync(file, JSON.stringify(settings, null, 2));
-    console.log(`✓ Beacon hook installed in ${file}`);
-  } else {
-    console.log(`✓ Beacon hook already present in ${file}`);
-  }
+// Remove the Beacon hook from a settings file, preserving everything else. Returns true if it removed something.
+function removeClaudeHook(file) {
+  if (!fs.existsSync(file)) return false;
+  let s; try { s = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return false; }
+  if (!s.hooks || !Array.isArray(s.hooks.PreToolUse)) return false;
+  const before = s.hooks.PreToolUse.length;
+  s.hooks.PreToolUse = s.hooks.PreToolUse.filter((e) => !(e.hooks || []).some((h) => typeof h.command === 'string' && h.command.includes('pretooluse.js')));
+  if (s.hooks.PreToolUse.length === before) return false;
+  if (s.hooks.PreToolUse.length === 0) delete s.hooks.PreToolUse;
+  if (s.hooks && Object.keys(s.hooks).length === 0) delete s.hooks;
+  fs.writeFileSync(file, JSON.stringify(s, null, 2));
+  return true;
+}
+
+function cmdInit(args) {
+  if (args.includes('--codex')) return cmdInitCodex(args);
+  const level = args.includes('--project') ? 'project' : 'global'; // default: global
+  const other = level === 'project' ? 'global' : 'project';
+  const targetFile = claudeFile(level);
+  const otherFile = claudeFile(other);
+
+  const state = installClaudeHook(targetFile);
+  const removed = otherFile !== targetFile && removeClaudeHook(otherFile);
+
+  console.log(state === 'added'
+    ? `✓ Beacon hook installed [${level}]: ${targetFile}`
+    : `✓ Beacon hook already present [${level}]: ${targetFile}`);
+  if (removed) console.log(`✓ Disabled the ${other}-level hook to avoid double-firing: ${otherFile}`);
+
   console.log('\nNext:');
   console.log('  beacon start -d      # start the local daemon');
   console.log(`  open ${BASE}   # live dashboard`);
-  console.log('\nThat\'s it. New Claude Code sessions in this project now report activity automatically.');
+  console.log(level === 'global'
+    ? '\nGlobal (default): every new Claude Code session on this machine now reports activity automatically.'
+    : '\nProject: new Claude Code sessions in THIS project now report activity automatically.');
+}
+
+function codexFile(level) {
+  const dir = level === 'project' ? path.join(process.cwd(), '.codex') : path.join(os.homedir(), '.codex');
+  return path.join(dir, 'config.toml');
+}
+
+// Remove the [mcp_servers.beacon] table (header → next table header or EOF), preserving the rest.
+function removeCodexBeacon(file) {
+  if (!fs.existsSync(file)) return false;
+  const lines = fs.readFileSync(file, 'utf8').split('\n');
+  const out = [];
+  let skipping = false;
+  let removed = false;
+  for (const line of lines) {
+    if (skipping) {
+      if (/^\s*\[/.test(line)) skipping = false; // next table begins — keep this line
+      else continue;
+    }
+    if (/^\s*\[mcp_servers\.beacon\]\s*$/.test(line)) { skipping = true; removed = true; continue; }
+    out.push(line);
+  }
+  if (!removed) return false;
+  fs.writeFileSync(file, out.join('\n').replace(/\n{3,}/g, '\n\n').replace(/\n+$/, '\n'));
+  return true;
 }
 
 // Register the Beacon MCP server for Codex (and any MCP client that reads Codex-style TOML).
 function cmdInitCodex(args) {
-  const project = args.includes('--project');
-  const dir = project ? path.join(process.cwd(), '.codex') : path.join(os.homedir(), '.codex');
-  const file = path.join(dir, 'config.toml');
-  fs.mkdirSync(dir, { recursive: true });
-  const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  const level = args.includes('--project') ? 'project' : 'global'; // default: global
+  const other = level === 'project' ? 'global' : 'project';
+  const targetFile = codexFile(level);
+  const otherFile = codexFile(other);
+  fs.mkdirSync(path.dirname(targetFile), { recursive: true });
+  const existing = fs.existsSync(targetFile) ? fs.readFileSync(targetFile, 'utf8') : '';
+  let state;
   if (existing.includes('[mcp_servers.beacon]')) {
-    console.log(`✓ Beacon MCP server already registered in ${file}`);
+    state = 'present';
   } else {
     const argsToml = `["${MCP.replace(/\\/g, '\\\\')}"]`;
     const block = `${existing && !existing.endsWith('\n') ? '\n' : ''}\n[mcp_servers.beacon]\ncommand = "node"\nargs = ${argsToml}\n`;
-    fs.appendFileSync(file, block);
-    console.log(`✓ Beacon MCP server registered in ${file}`);
+    fs.appendFileSync(targetFile, block);
+    state = 'added';
   }
+  const removed = otherFile !== targetFile && removeCodexBeacon(otherFile);
+
+  console.log(state === 'added'
+    ? `✓ Beacon MCP server registered [${level}]: ${targetFile}`
+    : `✓ Beacon MCP server already registered [${level}]: ${targetFile}`);
+  if (removed) console.log(`✓ Disabled the ${other}-level Codex registration to avoid double-registration: ${otherFile}`);
+
   console.log('\nNext:');
   console.log('  beacon start -d      # start the local daemon');
   console.log('\nOptional — add one line to your AGENTS.md so Codex uses it automatically:');
@@ -211,8 +270,8 @@ function help() {
   console.log(`beacon — real-time presence for parallel AI coding agents
 
 Usage:
-  beacon init [--global]     Install the Claude Code hook (project or user level)
-  beacon init --codex        Register the MCP server for Codex (~/.codex/config.toml)
+  beacon init [--project]    Install the Claude Code hook (default: global; --project = this repo only)
+  beacon init --codex [--project]  Register the MCP server for Codex (default: global)
   beacon mcp                 Run the stdio MCP server (spawned by Codex/Cursor/etc.)
   beacon start [-d]          Start the daemon (-d = detached/background)
   beacon stop                Stop the daemon

@@ -2,6 +2,15 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.4.0] — 2026-07-22
+
+### Changed
+- **`beacon init` now installs globally by default** (`~/.claude/settings.json`), covering every project on the machine with one command. Use `--project` to scope to a single repo. (Previously defaulted to project-level.)
+
+### Added
+- **Mutually-exclusive scopes** — installing at one level automatically removes the Beacon hook from the other, so it can never double-fire for a single edit. Applies to both the Claude Code hook (`beacon init` ↔ `beacon init --project`) and Codex (`beacon init --codex` ↔ `--codex --project`). Removal preserves all other settings/config; the Codex TOML remover strips only the `[mcp_servers.beacon]` table.
+- Docs: "Global vs project scope" section in both READMEs, with the safety rationale (conflict detection is path/tree-scoped, so global raises no cross-project false alarms).
+
 ## [0.3.0] — 2026-07-22
 
 ### Added

@@ -47,18 +47,30 @@ Beacon is a tiny local service that gives every agent a shared, real-time pictur
 git clone https://github.com/a1473838623/agent-beacon.git && cd agent-beacon
 npm link            # puts the `beacon` command on your PATH  (or: npm i -g agent-beacon)
 
-# 2. In your project, wire up Claude Code + start the daemon
-cd /path/to/your/project
-beacon init         # installs a PreToolUse hook into .claude/settings.json
+# 2. Wire up Claude Code + start the daemon
+beacon init         # GLOBAL by default — every project on this machine is covered
 beacon start -d     # start the local daemon (background)
 
 # 3. Watch it live
 open http://127.0.0.1:4517
 ```
 
-That's the whole setup. **New Claude Code sessions in that project now report activity automatically** — no per-session steps, no prompts to remember.
+That's the whole setup. **Every new Claude Code session on this machine now reports activity automatically** — no per-project steps, no per-session steps, no prompts to remember.
 
 Open a second session, have both edit the same file, and watch the overlap light up on the dashboard while the second agent gets a warning in its context.
+
+### Global vs project scope
+
+`beacon init` installs **globally by default** (`~/.claude/settings.json`), so every project is covered with one command. Prefer to scope it to a single repo? Use `--project`:
+
+```bash
+beacon init             # global — all projects (recommended default)
+beacon init --project   # this repo only (.claude/settings.json)
+```
+
+**The two levels are mutually exclusive — switching auto-disables the other.** Running `beacon init --project` removes the global hook; running `beacon init` again removes the project hook. This guarantees the hook never fires twice for one edit. (It cleans the global level and the *current* project; if you'd enabled several projects individually, re-run `--project` in each to switch them off.) Global monitoring is safe: conflict detection is scoped by file path and working tree, so unrelated projects never raise false overlaps — global just means "always on, everywhere."
+
+The daemon and dashboard are already machine-wide, so with global scope the dashboard becomes a single live view of everything you're doing across every repo.
 
 ---
 
@@ -101,9 +113,11 @@ Beacon ships a zero-dependency **MCP server**, so any MCP-capable agent can repo
 **Codex:**
 
 ```bash
-beacon init --codex      # adds [mcp_servers.beacon] to ~/.codex/config.toml
+beacon init --codex      # adds [mcp_servers.beacon] to ~/.codex/config.toml (global)
 beacon start -d
 ```
+
+(Global by default; `beacon init --codex --project` scopes it to `.codex/config.toml`, and switching levels disables the other — same as the Claude hook.)
 
 Optionally add one line to your `AGENTS.md` so Codex uses it proactively:
 
