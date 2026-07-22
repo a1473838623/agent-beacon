@@ -6,7 +6,7 @@
 
 在同一个仓库里同时跑 2 个、5 个、10 个 Claude Code 会话 —— 从此**不再让它们互相覆盖对方的改动**。
 
-[English](README.md) · **简体中文**
+<p align="center"><a href="README.md">English</a> · <b>简体中文</b></p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-4c9aff.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-3fb950.svg)](https://nodejs.org)
