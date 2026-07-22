@@ -1,0 +1,7 @@
+node_modules/
+*.log
+.beacon/
+.DS_Store
+.env
+.idea/
+.vscode/

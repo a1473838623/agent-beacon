@@ -1,0 +1,17 @@
+{
+  "//": "Example Claude Code hook config. `beacon init` writes this into .claude/settings.json for you.",
+  "//path": "Replace ABSOLUTE_PATH_TO with your install path, or just run `beacon init`.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"ABSOLUTE_PATH_TO/agent-beacon/hooks/pretooluse.js\""
+          }
+        ]
+      }
+    ]
+  }
+}

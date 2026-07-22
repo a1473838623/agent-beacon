@@ -1,0 +1,51 @@
+{
+  "name": "agent-beacon",
+  "version": "0.1.0",
+  "description": "Real-time presence and collision-avoidance for parallel AI coding agents. See what every Claude Code / MCP / CLI agent is touching — and never let two agents clobber the same file again.",
+  "type": "module",
+  "bin": {
+    "beacon": "bin/beacon.js"
+  },
+  "exports": {
+    ".": "./src/store.js"
+  },
+  "scripts": {
+    "start": "node src/daemon.js",
+    "test": "node test/smoke.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin",
+    "src",
+    "hooks",
+    "scripts",
+    "examples"
+  ],
+  "keywords": [
+    "claude-code",
+    "claude",
+    "mcp",
+    "ai-agents",
+    "agent",
+    "coordination",
+    "presence",
+    "collision-avoidance",
+    "parallel",
+    "cursor",
+    "developer-tools",
+    "hooks"
+  ],
+  "license": "MIT",
+  "author": "Beacon contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/a1473838623/agent-beacon.git"
+  },
+  "homepage": "https://github.com/a1473838623/agent-beacon#readme",
+  "bugs": {
+    "url": "https://github.com/a1473838623/agent-beacon/issues"
+  },
+  "dependencies": {}
+}

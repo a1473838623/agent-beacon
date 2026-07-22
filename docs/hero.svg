@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="360" viewBox="0 0 820 360" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif">
+  <rect width="820" height="360" rx="12" fill="#0b0e14"/>
+  <!-- header -->
+  <circle cx="34" cy="40" r="5" fill="#3fb950"/>
+  <text x="52" y="46" fill="#e6edf3" font-size="20" font-weight="700">Beacon<tspan fill="#4c9aff">.</tspan></text>
+  <text x="140" y="46" fill="#8b97a7" font-size="13">live agent activity</text>
+  <text x="786" y="46" fill="#8b97a7" font-size="13" text-anchor="end">3 active</text>
+  <line x1="0" y1="66" x2="820" y2="66" stroke="#232a36"/>
+
+  <!-- card 1: overlap -->
+  <rect x="24" y="86" width="772" height="56" rx="10" fill="#141922" stroke="#ffb547"/>
+  <rect x="40" y="104" width="66" height="20" rx="6" fill="rgba(76,154,255,0.15)"/>
+  <text x="49" y="118" fill="#4c9aff" font-size="11" font-weight="600">EDITING</text>
+  <text x="122" y="110" fill="#e6edf3" font-size="13" font-family="monospace">src/api/orders.ts</text>
+  <text x="122" y="128" fill="#8b97a7" font-size="12">claude-a1 · 12s ago</text>
+  <text x="778" y="118" fill="#ffb547" font-size="12" font-weight="600" text-anchor="end">⚠ overlap</text>
+
+  <!-- card 2: overlap (same file, other agent) -->
+  <rect x="24" y="150" width="772" height="56" rx="10" fill="#141922" stroke="#ffb547"/>
+  <rect x="40" y="168" width="66" height="20" rx="6" fill="rgba(76,154,255,0.15)"/>
+  <text x="49" y="182" fill="#4c9aff" font-size="11" font-weight="600">EDITING</text>
+  <text x="122" y="174" fill="#e6edf3" font-size="13" font-family="monospace">src/api/orders.ts</text>
+  <text x="122" y="192" fill="#8b97a7" font-size="12">cursor-b7 · 4s ago</text>
+  <text x="778" y="182" fill="#ffb547" font-size="12" font-weight="600" text-anchor="end">⚠ overlap</text>
+
+  <!-- card 3: git op -->
+  <rect x="24" y="214" width="772" height="56" rx="10" fill="#141922" stroke="#232a36"/>
+  <rect x="40" y="232" width="74" height="20" rx="6" fill="rgba(255,107,107,0.15)"/>
+  <text x="49" y="246" fill="#ff6b6b" font-size="11" font-weight="600">GIT CHECKOUT</text>
+  <text x="130" y="238" fill="#e6edf3" font-size="13" font-family="monospace">(working tree)</text>
+  <text x="130" y="256" fill="#8b97a7" font-size="12">claude-c3 · now</text>
+
+  <!-- injected warning -->
+  <rect x="24" y="286" width="772" height="50" rx="10" fill="#1a1410" stroke="#ffb547"/>
+  <text x="40" y="308" fill="#ffb547" font-size="12.5">⚠️ Beacon → agent context:</text>
+  <text x="40" y="326" fill="#e6edf3" font-size="12.5">cursor-b7 is editing src/api/orders.ts right now. Coordinate so you don't clobber each other.</text>
+</svg>

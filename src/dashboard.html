@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Beacon — live agent activity</title>
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #141922; --border: #232a36; --text: #e6edf3;
+    --muted: #8b97a7; --accent: #4c9aff; --warn: #ffb547; --danger: #ff6b6b; --ok: #3fb950;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--text); }
+  header { display: flex; align-items: center; gap: 12px; padding: 18px 24px; border-bottom: 1px solid var(--border); }
+  .logo { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
+  .logo span { color: var(--accent); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .sub { color: var(--muted); font-size: 12px; }
+  .count { margin-left: auto; color: var(--muted); font-size: 13px; }
+  main { padding: 20px 24px; max-width: 1000px; margin: 0 auto; }
+  .empty { color: var(--muted); text-align: center; padding: 64px 0; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
+  .card.conflict { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn) inset; }
+  .badge { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+           padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+  .b-editing { background: rgba(76,154,255,.15); color: var(--accent); }
+  .b-git { background: rgba(255,107,107,.15); color: var(--danger); }
+  .b-build, .b-deploy, .b-working { background: rgba(63,185,80,.15); color: var(--ok); }
+  .target { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; word-break: break-all; }
+  .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .who { color: var(--text); }
+  .grow { flex: 1; min-width: 0; }
+  .warntag { color: var(--warn); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+  a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <span class="logo">Beacon<span>.</span></span>
+  <span class="sub">live agent activity</span>
+  <span class="count" id="count">—</span>
+</header>
+<main>
+  <div id="list"></div>
+  <div class="empty" id="empty">No agents active right now. Activity appears here the moment a session starts editing.</div>
+</main>
+<footer>Beacon runs 100% locally · <a href="https://github.com/a1473838623/agent-beacon">github.com/a1473838623/agent-beacon</a></footer>
+
+<script>
+  const listEl = document.getElementById('list');
+  const emptyEl = document.getElementById('empty');
+  const countEl = document.getElementById('count');
+  const dot = document.getElementById('dot');
+
+  function ago(ts) {
+    const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+    if (s < 60) return s + 's ago';
+    const m = Math.round(s / 60);
+    if (m < 60) return m + 'm ago';
+    return Math.round(m / 60) + 'h ago';
+  }
+  function shortTarget(t) {
+    if (!t) return '';
+    const parts = String(t).replace(/\\/g, '/').split('/');
+    return parts.slice(-3).join('/');
+  }
+  function badgeClass(action) {
+    if (action.startsWith('editing')) return 'b-editing';
+    if (action.startsWith('git')) return 'b-git';
+    if (action.startsWith('build')) return 'b-build';
+    if (action.startsWith('deploy')) return 'b-deploy';
+    return 'b-working';
+  }
+
+  function render(items) {
+    countEl.textContent = items.length ? items.length + ' active' : '';
+    emptyEl.style.display = items.length ? 'none' : 'block';
+
+    // Mark targets touched by 2+ distinct actors as conflicts.
+    const byTarget = {};
+    for (const a of items) {
+      const k = (a.target || '').toLowerCase();
+      (byTarget[k] = byTarget[k] || new Set()).add(a.actor);
+    }
+
+    items.sort((a, b) => b.heartbeat - a.heartbeat);
+    listEl.innerHTML = items.map(a => {
+      const conflict = (byTarget[(a.target || '').toLowerCase()] || new Set()).size > 1;
+      return `<div class="card ${conflict ? 'conflict' : ''}">
+        <span class="badge ${badgeClass(a.action)}">${a.action.replace('git:', 'git ')}</span>
+        <div class="grow">
+          <div class="target">${shortTarget(a.target) || '(working tree)'}</div>
+          <div class="meta"><span class="who">${a.actorLabel || a.actor}</span> · ${ago(a.startedAt)}${a.exclusive ? ' · exclusive' : ''}${a.detail ? ' · ' + escapeHtml(a.detail) : ''}</div>
+        </div>
+        ${conflict ? '<span class="warntag">⚠ overlap</span>' : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+
+  function connect() {
+    const es = new EventSource('/events');
+    es.onmessage = (e) => { dot.style.background = 'var(--ok)'; try { render(JSON.parse(e.data)); } catch {} };
+    es.onerror = () => { dot.style.background = 'var(--danger)'; };
+  }
+  connect();
+  setInterval(() => { // refresh relative timestamps
+    document.querySelectorAll('.card').length && fetch('/activity').then(r => r.json()).then(d => render(d.activities)).catch(() => {});
+  }, 5000);
+</script>
+</body>
+</html>
