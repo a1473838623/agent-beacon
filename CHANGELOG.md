@@ -2,6 +2,11 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.7.2] — 2026-07-23
+
+### Changed
+- Per-session identity is now a soft colored **chip** around the session id (light tint background + colored border, readable neutral text) instead of a left-accent border — cleaner, and ties the color directly to the session name.
+
 ## [0.7.1] — 2026-07-23
 
 ### Changed
