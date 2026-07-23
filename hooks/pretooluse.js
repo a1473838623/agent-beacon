@@ -16,8 +16,19 @@ const PORT = Number(process.env.BEACON_PORT) || 4517;
 const BASE = `http://127.0.0.1:${PORT}`;
 const GUARD = process.env.BEACON_GUARD || 'warn'; // warn | ask | off
 
-// Destructive git verbs that silently rewrite the shared working tree / can lose uncommitted work.
-const DANGEROUS = /\bgit\s+(?:-C\s+\S+\s+)?(checkout|switch|reset\s+--hard|reset\s+--merge|stash|rebase|merge|clean|restore)\b/;
+// Classify a Bash command we care about. Returns { category, action, ttlMs } or null.
+function classifyBash(cmd) {
+  // Destructive git — silently rewrites the shared tree / can lose uncommitted work.
+  const gd = cmd.match(/\bgit\s+(?:-C\s+\S+\s+)?(checkout|switch|reset\s+--hard|reset\s+--merge|stash|rebase|merge|clean|restore)\b/);
+  if (gd) return { category: 'git-destructive', action: 'git:' + gd[1].split(/\s+/)[0], ttlMs: 30000 };
+  // Entangling git — stages/commits EVERYTHING, sweeping up other agents' uncommitted work.
+  if (/\bgit\s+add\s+(?:-A|--all|\.)(?:\s|$)/.test(cmd)) return { category: 'git-entangle', action: 'git:add-all', ttlMs: 30000 };
+  if (/\bgit\s+commit\b[^|;&]*(?:\s-[a-zA-Z]*a[a-zA-Z]*\b|--all\b)/.test(cmd)) return { category: 'git-entangle', action: 'git:commit-all', ttlMs: 30000 };
+  // Deploy / build — parallelizable, but running the same one twice at once just wastes CPU/Docker.
+  if (/\bdocker(?:-compose)?\b[^|;&]*\b(?:up|build|deploy)\b/.test(cmd) || /\bkubectl\s+apply\b/.test(cmd)) return { category: 'deploy', action: 'deploying', ttlMs: 600000 };
+  if (/\b(?:mvn|mvnd|gradle|\.\/gradlew|make|bazel)\b/.test(cmd) || /\b(?:cargo|go)\s+build\b/.test(cmd) || /\b(?:npm|yarn|pnpm)\s+(?:run\s+)?build\b/.test(cmd)) return { category: 'build', action: 'building', ttlMs: 600000 };
+  return null;
+}
 
 function allow() { process.exit(0); }               // no output = allow, no context added
 function emit(obj) { process.stdout.write(JSON.stringify(obj)); process.exit(0); }
@@ -65,37 +76,45 @@ async function main() {
   const actorLabel = (input.session_id || 'session').slice(0, 8);
   const cwd = input.cwd || process.cwd();
 
-  let action, target, dangerous = false;
+  let category = 'edit', action, target, ttlMs = 180000;
   if (tool === 'Edit' || tool === 'Write' || tool === 'MultiEdit') {
     if (!ti.file_path) return allow();
     action = 'editing';
     target = ti.file_path;
   } else if (tool === 'Bash') {
-    const m = String(ti.command || '').match(DANGEROUS);
-    if (!m) return allow();
-    dangerous = true;
-    action = 'git:' + m[1].split(/\s+/)[0];
-    target = cwd;
+    const c = classifyBash(String(ti.command || ''));
+    if (!c) return allow();
+    category = c.category; action = c.action; ttlMs = c.ttlMs;
+    // Build/deploy get their own target namespace so they conflict only with other
+    // builds/deploys in the same dir — not with git ops (which target the raw cwd).
+    target = (c.category === 'build' || c.category === 'deploy') ? `job://${cwd}` : cwd;
   } else {
     return allow();
   }
 
+  // Edit presence is momentary — short TTL so it fades if the session goes idle without a
+  // Stop event; the Stop hook clears it promptly. Build/deploy get a longer backstop.
   const conflicts = await report({
     actor, actorLabel, action, target, cwd,
     detail: tool === 'Bash' ? String(ti.command || '').slice(0, 120) : '',
-    // Edit presence is momentary — keep it short so it fades if the session goes idle
-    // without a Stop event (crash / older client). The Stop hook clears it promptly.
-    ttlMs: dangerous ? 30000 : 180000,
+    ttlMs,
   });
 
   if (!conflicts || conflicts.length === 0) return allow();
 
   const who = conflicts.map((c) => `${c.actorLabel || c.actor} (${c.action} ${shortTarget(c.target)})`).join('; ');
-  const msg = dangerous
-    ? `⚠️ Beacon: another agent is active in this working tree — ${who}. This "${action.replace('git:', 'git ')}" may discard or overwrite their uncommitted work. Confirm with the user before proceeding.`
-    : `⚠️ Beacon: ${who} is editing this same file right now. Coordinate so you don't clobber each other's changes.`;
+  let msg;
+  if (category === 'git-destructive')
+    msg = `⚠️ Beacon: another agent is active in this working tree — ${who}. This "${action.replace('git:', 'git ')}" may discard or overwrite their uncommitted work. Confirm with the user first.`;
+  else if (category === 'git-entangle')
+    msg = `⚠️ Beacon: another agent has uncommitted edits in this tree — ${who}. "${action.replace('git:', 'git ').replace('-', ' --')}" will sweep their changes into your commit. Stage specific files instead, or coordinate first.`;
+  else if (category === 'build' || category === 'deploy')
+    msg = `⚠️ Beacon: a build/deploy is already running in this directory — ${who}. Running another in parallel mainly wastes local resources (CPU / Docker); consider waiting for it to finish.`;
+  else
+    msg = `⚠️ Beacon: ${who} is editing this same file right now. Coordinate so you don't clobber each other's changes.`;
 
-  if (GUARD === 'ask' && dangerous) {
+  const riskyGit = category === 'git-destructive' || category === 'git-entangle';
+  if (GUARD === 'ask' && riskyGit) {
     return emit({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'ask', permissionDecisionReason: msg } });
   }
   return emit({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: msg } });

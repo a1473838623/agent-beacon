@@ -2,6 +2,15 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.6.0] — 2026-07-22
+
+### Added
+- **Dashboard: per-session colors** — each actor gets a stable color (bar + dot) from a fixed palette, so overlapping sessions are easy to tell apart at a glance.
+- **Dashboard: per-row details** — a `details` button opens a modal with the full session UUID, action, target, working dir, detail, start/last-seen times, TTL/expiry, and exclusivity.
+- **Dashboard: light / dark toggle** — remembers your choice (localStorage) and defaults to your OS preference.
+- **Entangling-git guard** — `git add -A` / `git add .` and `git commit -a` / `--all` now warn when another agent has uncommitted edits in the tree, since they'd sweep that agent's work into your commit. Suggests staging specific files instead.
+- **Build/deploy placeholders** — the Bash hook now recognizes `mvn`/`gradle`/`make`/`cargo build`/`go build`/`npm|yarn|pnpm build` and `docker`/`docker compose up|build`/`kubectl apply`, reports them as `building`/`deploying` on a `job://<dir>` target, and warns a second agent that a build/deploy is already running there (parallel is fine; redundant wastes CPU/Docker).
+
 ## [0.5.2] — 2026-07-22
 
 ### Changed

@@ -9,6 +9,10 @@
     --bg: #0b0e14; --panel: #141922; --border: #232a36; --text: #e6edf3;
     --muted: #8b97a7; --accent: #4c9aff; --warn: #ffb547; --danger: #ff6b6b; --ok: #3fb950;
   }
+  html[data-theme="light"] {
+    --bg: #f6f8fa; --panel: #ffffff; --border: #d0d7de; --text: #1f2328;
+    --muted: #656d76; --accent: #0969da; --warn: #9a6700; --danger: #cf222e; --ok: #1a7f37;
+  }
   * { box-sizing: border-box; }
   body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
          background: var(--bg); color: var(--text); }
@@ -23,6 +27,20 @@
            border-radius: 7px; padding: 5px 11px; font-size: 12px; cursor: pointer; }
   button:hover { border-color: var(--accent); }
   #quit:hover { border-color: var(--danger); color: var(--danger); }
+  .cardbar { width: 3px; align-self: stretch; border-radius: 3px; flex: none; }
+  .actorchip { display: inline-flex; align-items: center; gap: 5px; }
+  .actordot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .detailbtn { background: transparent; border: 1px solid var(--border); color: var(--muted);
+               border-radius: 6px; padding: 4px 9px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .detailbtn:hover { color: var(--text); border-color: var(--accent); }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; padding: 20px; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; max-width: 580px; width: 100%; }
+  .modal h3 { margin: 0 0 14px; font-size: 15px; }
+  .modal dl { display: grid; grid-template-columns: max-content 1fr; gap: 7px 16px; margin: 0; font-size: 13px; }
+  .modal dt { color: var(--muted); }
+  .modal dd { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; word-break: break-all; }
+  .modal .close { float: right; margin-top: -4px; }
   main { padding: 20px 24px; max-width: 1000px; margin: 0 auto; }
   .empty { color: var(--muted); text-align: center; padding: 64px 0; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
@@ -49,6 +67,7 @@
   <span class="sub">live agent activity</span>
   <span class="count" id="count">—</span>
   <span class="controls">
+    <button id="theme" title="Toggle light / dark">◐</button>
     <button id="clear" title="Dismiss all current activity for every session (does not touch files or history)">Clear</button>
     <button id="restart" title="Restart the daemon">Restart</button>
     <button id="quit" title="Stop the daemon">Quit</button>
@@ -60,12 +79,20 @@
 </main>
 <footer>Beacon runs 100% locally · <a href="https://github.com/a1473838623/agent-beacon">github.com/a1473838623/agent-beacon</a></footer>
 <div id="toast" style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);max-width:80%;font-size:13px;opacity:0;transition:opacity .3s;background:var(--panel);border:1px solid var(--border);padding:9px 15px;border-radius:8px;"></div>
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <button class="detailbtn close" id="mclose">close</button>
+    <h3>Activity details</h3>
+    <div id="mbody"></div>
+  </div>
+</div>
 
 <script>
   const listEl = document.getElementById('list');
   const emptyEl = document.getElementById('empty');
   const countEl = document.getElementById('count');
   const dot = document.getElementById('dot');
+  let lastItems = [];
 
   function ago(ts) {
     const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
@@ -99,17 +126,33 @@
     }
 
     items.sort((a, b) => b.heartbeat - a.heartbeat);
+    lastItems = items;
     listEl.innerHTML = items.map(a => {
       const conflict = (byTarget[(a.target || '').toLowerCase()] || new Set()).size > 1;
+      const color = colorFor(a.actor);
       return `<div class="card ${conflict ? 'conflict' : ''}">
-        <span class="badge ${badgeClass(a.action)}">${a.action.replace('git:', 'git ')}</span>
+        <span class="cardbar" style="background:${color}"></span>
+        <span class="badge ${badgeClass(a.action)}">${escapeHtml(a.action.replace('git:', 'git '))}</span>
         <div class="grow">
-          <div class="target">${shortTarget(a.target) || '(working tree)'}</div>
-          <div class="meta"><span class="who">${a.actorLabel || a.actor}</span> · ${ago(a.startedAt)}${a.exclusive ? ' · exclusive' : ''}${a.detail ? ' · ' + escapeHtml(a.detail) : ''}</div>
+          <div class="target">${escapeHtml(shortTarget(a.target)) || '(working tree)'}</div>
+          <div class="meta"><span class="actorchip"><span class="actordot" style="background:${color}"></span><span class="who">${escapeHtml(a.actorLabel || a.actor)}</span></span> · ${ago(a.startedAt)}${a.exclusive ? ' · exclusive' : ''}</div>
         </div>
         ${conflict ? '<span class="warntag">⚠ overlap</span>' : ''}
+        <button class="detailbtn" data-id="${a.id}">details</button>
       </div>`;
     }).join('');
+  }
+
+  // Stable per-actor color so you can tell sessions apart at a glance.
+  // Hash (FNV-1a) into a fixed palette of clearly-distinct swatches — avoids the
+  // "two nearly-identical hues" problem you get hashing onto a continuous wheel.
+  const PALETTE = ['#4c9aff', '#f2683c', '#3fb950', '#c264fe', '#ffb547', '#2dd4bf',
+    '#ff6b9d', '#a3e635', '#38bdf8', '#f472b6', '#facc15', '#818cf8', '#fb7185', '#34d399'];
+  function colorFor(s) {
+    s = String(s || '');
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return PALETTE[(h >>> 0) % PALETTE.length];
   }
 
   function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
@@ -157,6 +200,44 @@
     if (ok) { countEl.textContent = 'stopped'; dot.style.background = 'var(--danger)'; toast('Daemon stopped.'); }
     else toast(STALE, true);
   };
+
+  // --- theme (light / dark) ---
+  const root = document.documentElement;
+  function setTheme(t) { root.setAttribute('data-theme', t); try { localStorage.setItem('beaconTheme', t); } catch {} }
+  setTheme((() => { try { return localStorage.getItem('beaconTheme'); } catch { return null; } })()
+    || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+  document.getElementById('theme').onclick = () => setTheme(root.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+
+  // --- details modal ---
+  const overlay = document.getElementById('overlay');
+  function fmt(ts) { try { return new Date(ts).toLocaleString(); } catch { return ts; } }
+  function openDetails(id) {
+    const a = lastItems.find(x => x.id === id);
+    if (!a) return;
+    const expiresIn = Math.max(0, Math.round((a.heartbeat + a.ttlMs - Date.now()) / 1000));
+    const row = (k, v) => v ? `<dt>${k}</dt><dd>${escapeHtml(v)}</dd>` : '';
+    document.getElementById('mbody').innerHTML = `<dl>
+      ${row('session / actor', a.actor)}
+      ${row('label', a.actorLabel)}
+      ${row('action', a.action)}
+      ${row('target', a.target || '(working tree)')}
+      ${row('working dir', a.cwd)}
+      ${row('detail', a.detail)}
+      ${row('started', fmt(a.startedAt))}
+      ${row('last seen', fmt(a.heartbeat))}
+      <dt>expires in</dt><dd>${expiresIn}s</dd>
+      <dt>exclusive</dt><dd>${a.exclusive ? 'yes' : 'no'}</dd>
+    </dl>`;
+    overlay.classList.add('open');
+  }
+  function closeDetails() { overlay.classList.remove('open'); }
+  listEl.addEventListener('click', (e) => {
+    const b = e.target.closest('.detailbtn');
+    if (b) openDetails(b.getAttribute('data-id'));
+  });
+  document.getElementById('mclose').onclick = closeDetails;
+  overlay.onclick = (e) => { if (e.target === overlay) closeDetails(); };
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDetails(); });
 </script>
 </body>
 </html>

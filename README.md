@@ -32,8 +32,9 @@ Beacon is a tiny local service that gives every agent a shared, real-time pictur
 
 - 👀 **Mutual awareness** — every session reports what it's editing; others can see it live.
 - ⚡ **Collision warnings, in-context** — when an agent is about to edit a file another agent is already in, Beacon injects a one-line heads-up *into that agent's own context*, before the edit.
-- 🔪 **Guards destructive git ops** — `checkout`, `reset --hard`, `stash`, `rebase`, `clean` while another session has unsaved edits in the tree → the agent is warned (or asked to confirm).
-- 📊 **Live dashboard** — a single local web page showing every active agent, updated in real time.
+- 🔪 **Guards risky shared-tree ops** — `checkout` / `reset --hard` / `stash` / `rebase` / `clean`, *and* `git add -A` / `commit -a` (which sweep up another agent's uncommitted work), while another session is editing the tree → the agent is warned (or asked to confirm).
+- 🔁 **Flags redundant builds/deploys** — if a build or deploy is already running in a directory, a second agent kicking off another one is warned that it's just burning CPU/Docker. Parallel is fine; *redundant* is wasteful.
+- 📊 **Live dashboard** — every active agent in real time, **color-coded per session**, with a **details** view per row and a **light/dark** toggle.
 - 🪶 **Weightless & invisible** — zero dependencies, 100% local, and it **never blocks your work**. No conflict? You never notice it's there.
 
 > **Safe by design:** Beacon is advisory. It *fails open* — if the daemon is down or anything errors, your session behaves exactly as if Beacon weren't installed. It never denies an edit by default, and in the common (no-overlap) case it adds **zero tokens** to your agent's context.
