@@ -2,6 +2,11 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.5.1] — 2026-07-22
+
+### Fixed
+- Dashboard **Clear / Restart / Quit** buttons now show a toast on success or failure instead of failing silently. Clicking one against an out-of-date daemon (e.g. a pre-0.5.0 daemon that lacks the `/clear` endpoint) previously looked like it did nothing; now it tells you to run `beacon restart`.
+
 ## [0.5.0] — 2026-07-22
 
 ### Fixed

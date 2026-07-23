@@ -59,6 +59,7 @@
   <div class="empty" id="empty">No agents active right now. Activity appears here the moment a session starts editing.</div>
 </main>
 <footer>Beacon runs 100% locally · <a href="https://github.com/a1473838623/agent-beacon">github.com/a1473838623/agent-beacon</a></footer>
+<div id="toast" style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);max-width:80%;font-size:13px;opacity:0;transition:opacity .3s;background:var(--panel);border:1px solid var(--border);padding:9px 15px;border-radius:8px;"></div>
 
 <script>
   const listEl = document.getElementById('list');
@@ -124,18 +125,36 @@
   }, 5000);
 
   async function ctl(path) {
-    try { await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }); return true; }
+    try { const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }); return r.ok; }
     catch { return false; }
   }
-  document.getElementById('clear').onclick = () => ctl('/clear');
+  function toast(msg, bad) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.color = bad ? 'var(--danger)' : 'var(--ok)';
+    t.style.borderColor = bad ? 'var(--danger)' : 'var(--border)';
+    t.style.opacity = '1';
+    clearTimeout(t._h);
+    t._h = setTimeout(() => { t.style.opacity = '0'; }, 4000);
+  }
+  const STALE = 'Failed — your daemon is out of date. Run: beacon restart  (or: beacon stop && beacon start -d)';
+
+  document.getElementById('clear').onclick = async () => {
+    const ok = await ctl('/clear');
+    toast(ok ? 'Cleared.' : STALE, !ok);
+  };
   document.getElementById('restart').onclick = async () => {
     if (!confirm('Restart the Beacon daemon?')) return;
-    await ctl('/restart'); countEl.textContent = 'restarting…'; dot.style.background = 'var(--warn)';
+    const ok = await ctl('/restart');
+    if (ok) { countEl.textContent = 'restarting…'; dot.style.background = 'var(--warn)'; toast('Restarting…'); }
+    else toast(STALE, true);
     // EventSource reconnects automatically once the new daemon is up.
   };
   document.getElementById('quit').onclick = async () => {
     if (!confirm('Stop the Beacon daemon? The dashboard will go offline until you start it again.')) return;
-    await ctl('/shutdown'); countEl.textContent = 'stopped'; dot.style.background = 'var(--danger)';
+    const ok = await ctl('/shutdown');
+    if (ok) { countEl.textContent = 'stopped'; dot.style.background = 'var(--danger)'; toast('Daemon stopped.'); }
+    else toast(STALE, true);
   };
 </script>
 </body>
