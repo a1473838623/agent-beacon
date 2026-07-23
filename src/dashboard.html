@@ -21,7 +21,10 @@
   header { display: flex; align-items: center; gap: 12px; padding: 18px 24px; border-bottom: 1px solid var(--border); }
   .logo { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
   .logo span { color: var(--accent); }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background-color: var(--muted); }
+  .dot.live { background-color: var(--ok); animation: beacon-pulse 1.8s ease-in-out infinite; }
+  .dot.down { background-color: var(--danger); box-shadow: 0 0 6px var(--danger); }
+  @keyframes beacon-pulse { 0%, 100% { box-shadow: 0 0 3px 0 var(--ok); } 50% { box-shadow: 0 0 9px 2px var(--ok); } }
   .sub { color: var(--muted); font-size: 12px; }
   .count { margin-left: auto; color: var(--muted); font-size: 13px; }
   .controls { display: flex; gap: 8px; }
@@ -194,12 +197,17 @@
 
   function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
 
+  function setStatus(ok) { dot.classList.toggle('live', ok); dot.classList.toggle('down', !ok); }
   function connect() {
     const es = new EventSource('/events');
-    es.onmessage = (e) => { dot.style.background = 'var(--ok)'; try { render(JSON.parse(e.data)); } catch {} };
-    es.onerror = () => { dot.style.background = 'var(--danger)'; };
+    es.onmessage = (e) => { setStatus(true); try { render(JSON.parse(e.data)); } catch {} };
+    es.onerror = () => { setStatus(false); };
   }
   connect();
+  // Active health poll so the dot reflects the daemon reliably (not just SSE events).
+  async function pollHealth() { try { setStatus((await fetch('/health', { cache: 'no-store' })).ok); } catch { setStatus(false); } }
+  pollHealth();
+  setInterval(pollHealth, 3000);
   setInterval(() => { // refresh relative timestamps
     document.querySelectorAll('.card').length && fetch('/activity').then(r => r.json()).then(d => render(d.activities)).catch(() => {});
   }, 5000);
@@ -234,7 +242,7 @@
   document.getElementById('quit').onclick = async () => {
     if (!confirm('Stop the Beacon daemon? The dashboard will go offline until you start it again.')) return;
     const ok = await ctl('/shutdown');
-    if (ok) { countEl.textContent = 'stopped'; dot.style.background = 'var(--danger)'; toast('Daemon stopped.'); }
+    if (ok) { countEl.textContent = 'stopped'; setStatus(false); toast('Daemon stopped.'); }
     else toast(STALE, true);
   };
 

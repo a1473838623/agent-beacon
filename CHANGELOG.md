@@ -2,6 +2,11 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.7.3] — 2026-07-23
+
+### Fixed
+- **Status dot is now genuinely dynamic** — it pulses green while the daemon is healthy and turns solid red when the daemon is unreachable, backed by an active 3-second health poll (not just passive SSE events). Removed a CSS `background` transition that, under a busy event stream, left the dot stuck on its neutral gray color.
+
 ## [0.7.2] — 2026-07-23
 
 ### Changed
