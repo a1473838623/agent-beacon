@@ -186,7 +186,9 @@ No. Everything is local — a daemon on `127.0.0.1`, an append-only log under `~
 No — it's the awareness layer *underneath* them. It doesn't take locks or move files; it makes agents *see* each other so they (or you) can coordinate. Pairs perfectly with git worktrees if you use them.
 
 **An activity is still showing after I stopped editing?**
-It clears when your session's turn ends (a Stop hook) and otherwise fades a few minutes after the last edit. You can also hit **Clear** on the dashboard to wipe the board instantly — plus **Restart** / **Quit** the daemon right from the header (or `beacon restart` / `beacon stop`). Upgrading from an older version? Re-run `beacon init` to add the Stop hook, then `beacon restart`.
+It clears when your session's turn ends (a Stop hook) and otherwise fades a few minutes after the last edit. You can also hit **Clear** on the dashboard (with confirmation) to dismiss the board instantly — plus **Restart** / **Quit** the daemon right from the header (or `beacon restart` / `beacon stop`). Upgrading from an older version? Re-run `beacon init` to add the Stop hook, then `beacon restart`.
+
+**Is Clear destructive?** No durable data is lost — Beacon never touches files, and the history log keeps every event. But it's *global*: it dismisses live presence for **all** sessions at once (active ones reappear on their next edit), so it's confirmed before it runs. Use it to wipe a board cluttered with stale entries.
 
 ---
 

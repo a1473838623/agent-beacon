@@ -2,6 +2,11 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.5.2] — 2026-07-22
+
+### Changed
+- **Clear now asks for confirmation** and its tooltip/label spell out the scope: it dismisses live activity for *all* sessions at once (they reappear as they keep working) and never touches files, work, or the history log. Previously it fired instantly with no guard. Docs (FAQ, both languages) clarify that Clear loses no durable data but is a global action.
+
 ## [0.5.1] — 2026-07-22
 
 ### Fixed
