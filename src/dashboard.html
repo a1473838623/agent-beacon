@@ -15,7 +15,7 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-         background: var(--bg); color: var(--text); }
+         background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
   header { display: flex; align-items: center; gap: 12px; padding: 18px 24px; border-bottom: 1px solid var(--border); }
   .logo { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
   .logo span { color: var(--accent); }
@@ -27,7 +27,6 @@
            border-radius: 7px; padding: 5px 11px; font-size: 12px; cursor: pointer; }
   button:hover { border-color: var(--accent); }
   #quit:hover { border-color: var(--danger); color: var(--danger); }
-  .cardbar { width: 3px; align-self: stretch; border-radius: 3px; flex: none; }
   .actorchip { display: inline-flex; align-items: center; gap: 5px; }
   .actordot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
   .detailbtn { background: transparent; border: 1px solid var(--border); color: var(--muted);
@@ -41,7 +40,17 @@
   .modal dt { color: var(--muted); }
   .modal dd { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; word-break: break-all; }
   .modal .close { float: right; margin-top: -4px; }
-  main { padding: 20px 24px; max-width: 1000px; margin: 0 auto; }
+  .modal h3 + .section { margin-top: 8px; }
+  .section { margin: 0 0 18px; display: flex; flex-direction: column; gap: 10px; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+  .toggle input { width: 15px; height: 15px; cursor: pointer; }
+  .hint { color: var(--muted); font-size: 12px; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  select { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 5px 9px; font-size: 12px; }
+  .logview { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+             max-height: 300px; overflow: auto; font-family: ui-monospace, Menlo, Consolas, monospace;
+             font-size: 12px; white-space: pre-wrap; word-break: break-all; margin: 0; }
+  main { padding: 20px 24px; max-width: 1000px; margin: 0 auto; width: 100%; flex: 1 0 auto; }
   .empty { color: var(--muted); text-align: center; padding: 64px 0; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
           padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
@@ -67,6 +76,7 @@
   <span class="sub">live agent activity</span>
   <span class="count" id="count">—</span>
   <span class="controls">
+    <button id="settings" title="Settings, updates, logs">⚙</button>
     <button id="theme" title="Toggle light / dark">◐</button>
     <button id="clear" title="Dismiss all current activity for every session (does not touch files or history)">Clear</button>
     <button id="restart" title="Restart the daemon">Restart</button>
@@ -84,6 +94,32 @@
     <button class="detailbtn close" id="mclose">close</button>
     <h3>Activity details</h3>
     <div id="mbody"></div>
+  </div>
+</div>
+
+<div class="overlay" id="soverlay">
+  <div class="modal" style="max-width:660px">
+    <button class="detailbtn close" id="sclose">close</button>
+    <h3>Settings</h3>
+    <div class="section">
+      <label class="toggle"><input type="checkbox" id="setAutoCheck"> Auto-check for updates <span class="hint">(off by default · contacts GitHub only when enabled)</span></label>
+      <label class="toggle"><input type="checkbox" id="setBoot"> Start Beacon on login <span class="hint" id="bootHint"></span></label>
+    </div>
+    <h3>Updates</h3>
+    <div class="section">
+      <div class="row"><span id="verLine" class="hint">version —</span><button class="detailbtn" id="checkUpd">Check now</button><span id="updResult" class="hint"></span></div>
+      <div class="row"><button class="detailbtn" id="applyUpd" style="display:none">Update (git pull)</button></div>
+    </div>
+    <h3>Logs <span class="hint">— stored per day, 100% local</span></h3>
+    <div class="section">
+      <div class="row">
+        <select id="logDay"></select>
+        <button class="detailbtn" id="logRefresh">Refresh</button>
+        <button class="detailbtn" id="logDel">Delete this day</button>
+        <button class="detailbtn" id="logDelAll">Delete all</button>
+      </div>
+      <pre id="logView" class="logview">(select a day)</pre>
+    </div>
   </div>
 </div>
 
@@ -130,8 +166,7 @@
     listEl.innerHTML = items.map(a => {
       const conflict = (byTarget[(a.target || '').toLowerCase()] || new Set()).size > 1;
       const color = colorFor(a.actor);
-      return `<div class="card ${conflict ? 'conflict' : ''}">
-        <span class="cardbar" style="background:${color}"></span>
+      return `<div class="card ${conflict ? 'conflict' : ''}" style="border-left:3px solid ${color}">
         <span class="badge ${badgeClass(a.action)}">${escapeHtml(a.action.replace('git:', 'git '))}</span>
         <div class="grow">
           <div class="target">${escapeHtml(shortTarget(a.target)) || '(working tree)'}</div>
@@ -190,7 +225,7 @@
   document.getElementById('restart').onclick = async () => {
     if (!confirm('Restart the Beacon daemon?')) return;
     const ok = await ctl('/restart');
-    if (ok) { countEl.textContent = 'restarting…'; dot.style.background = 'var(--warn)'; toast('Restarting…'); }
+    if (ok) { countEl.textContent = 'restarting…'; toast('Restarting…'); } // dot will blink red→green as SSE reconnects
     else toast(STALE, true);
     // EventSource reconnects automatically once the new daemon is up.
   };
@@ -237,7 +272,98 @@
   });
   document.getElementById('mclose').onclick = closeDetails;
   overlay.onclick = (e) => { if (e.target === overlay) closeDetails(); };
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDetails(); });
+
+  // --- settings / updates / logs ---
+  const soverlay = document.getElementById('soverlay');
+  const getJSON = async (p) => { try { return await (await fetch(p)).json(); } catch { return null; } };
+  const postJSON = async (p, b) => { try { return await (await fetch(p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b || {}) })).json(); } catch { return null; } };
+
+  async function loadSettings() {
+    const s = await getJSON('/settings');
+    const bootHint = document.getElementById('bootHint');
+    const setBoot = document.getElementById('setBoot');
+    // Old daemon has no /settings endpoint (404 → no platform). Don't mislabel that as "unsupported OS".
+    if (!s || s.error || !s.platform) {
+      bootHint.textContent = '(daemon out of date — run `beacon restart`)';
+      setBoot.disabled = true;
+      return;
+    }
+    document.getElementById('setAutoCheck').checked = !!s.autoCheckUpdates;
+    setBoot.checked = !!s.startOnBoot;
+    const supported = ['win32', 'linux', 'darwin'].includes(s.platform);
+    bootHint.textContent = supported ? '' : '(not supported on ' + s.platform + ')';
+    setBoot.disabled = !supported;
+    const h = await getJSON('/health');
+    document.getElementById('verLine').textContent = 'version ' + (h ? 'v' + h.version : '—');
+  }
+  async function loadLogDays(keep) {
+    const d = await getJSON('/logs/days');
+    const days = (d && d.days) || [];
+    const el = document.getElementById('logDay');
+    el.innerHTML = days.length
+      ? days.map((x) => `<option value="${x.date}">${x.date}  (${Math.round(x.size / 102.4) / 10} KB)</option>`).join('')
+      : '<option value="">(no logs)</option>';
+    if (keep && days.some((x) => x.date === keep)) el.value = keep;
+    viewLog();
+  }
+  async function viewLog() {
+    const date = document.getElementById('logDay').value;
+    const v = document.getElementById('logView');
+    if (!date) { v.textContent = '(no logs)'; return; }
+    const d = await getJSON('/logs?date=' + encodeURIComponent(date) + '&tail=1000');
+    v.textContent = (d && d.content) || '(empty)';
+    v.scrollTop = v.scrollHeight;
+  }
+  function closeSettings() { soverlay.classList.remove('open'); }
+  document.getElementById('settings').onclick = async () => { await loadSettings(); await loadLogDays(); soverlay.classList.add('open'); };
+  document.getElementById('sclose').onclick = closeSettings;
+  soverlay.onclick = (e) => { if (e.target === soverlay) closeSettings(); };
+
+  document.getElementById('setAutoCheck').onchange = async (e) => { await postJSON('/settings', { autoCheckUpdates: e.target.checked }); toast('Setting saved.'); };
+  document.getElementById('setBoot').onchange = async (e) => {
+    const r = await postJSON('/settings', { startOnBoot: e.target.checked });
+    if (r && r.autoStart && r.autoStart.ok === false) {
+      e.target.checked = !!r.startOnBoot;
+      document.getElementById('bootHint').textContent = '(' + (r.autoStart.message || 'failed') + ')';
+      toast('Start on login: ' + (r.autoStart.message || 'failed'), true);
+    } else toast('Start on login ' + (e.target.checked ? 'enabled' : 'disabled') + '.');
+  };
+  document.getElementById('checkUpd').onclick = async () => {
+    const el = document.getElementById('updResult'), apply = document.getElementById('applyUpd');
+    el.textContent = 'checking…'; apply.style.display = 'none';
+    const r = await getJSON('/update/check');
+    if (!r || r.error) { el.textContent = r ? r.error : 'check failed'; return; }
+    if (r.updateAvailable) {
+      el.innerHTML = `update available: <b>v${escapeHtml(r.latest)}</b> (you have v${escapeHtml(r.current)}) — <a href="${r.url}" target="_blank">notes</a>`;
+      apply.style.display = r.isGitRepo ? 'inline-block' : 'none';
+    } else el.textContent = `up to date (v${escapeHtml(r.current)})`;
+  };
+  document.getElementById('applyUpd').onclick = async () => {
+    if (!confirm('Run `git pull` to update Beacon? Restart the daemon afterward.')) return;
+    const r = await postJSON('/update/apply', {});
+    toast(r && r.ok ? 'Updated — click Restart to apply.' : 'Update: ' + ((r && r.message) || 'failed'), !(r && r.ok));
+  };
+  document.getElementById('logDay').onchange = viewLog;
+  document.getElementById('logRefresh').onclick = () => loadLogDays(document.getElementById('logDay').value);
+  document.getElementById('logDel').onclick = async () => {
+    const date = document.getElementById('logDay').value; if (!date) return;
+    if (!confirm('Delete logs for ' + date + '?')) return;
+    await postJSON('/logs/delete', { date }); toast('Deleted ' + date + '.'); loadLogDays();
+  };
+  document.getElementById('logDelAll').onclick = async () => {
+    if (!confirm('Delete ALL logs?')) return;
+    await postJSON('/logs/delete', { date: 'all' }); toast('Deleted all logs.'); loadLogDays();
+  };
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDetails(); closeSettings(); } });
+
+  // Opt-in: auto-check for updates on load only if the user enabled it.
+  (async () => {
+    const s = await getJSON('/settings');
+    if (s && s.autoCheckUpdates) {
+      const r = await getJSON('/update/check');
+      if (r && r.updateAvailable) toast(`Beacon v${r.latest} available (you have v${r.current}) — open ⚙ Settings`);
+    }
+  })();
 </script>
 </body>
 </html>

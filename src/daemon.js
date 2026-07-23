@@ -3,10 +3,18 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Store, BEACON_HOME } from './store.js';
-import { log } from './log.js';
+import { log, listLogDays, readLogDay, deleteLogDay } from './log.js';
+import { getSettings, saveSettings } from './settings.js';
+import { setAutoStart, isAutoStartEnabled } from './autostart.js';
+
+function cmpVer(a, b) {
+  const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
+  for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d > 0 ? 1 : -1; }
+  return 0;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,6 +64,66 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === 'GET' && u.pathname === '/health') {
     return json(res, 200, { ok: true, version: pkg.version, count: store.list().length });
+  }
+
+  // --- settings ---
+  if (u.pathname === '/settings') {
+    if (req.method === 'GET') return json(res, 200, { ...getSettings(), startOnBoot: isAutoStartEnabled(), platform: process.platform });
+    if (req.method === 'POST') {
+      if (!sameOrigin(req)) return json(res, 403, { error: 'forbidden' });
+      const body = await readBody(req);
+      let autoStart = null;
+      if (typeof body.startOnBoot === 'boolean') autoStart = setAutoStart(body.startOnBoot);
+      const saved = saveSettings(body);
+      log('info', 'daemon', 'settings updated', { autoCheckUpdates: saved.autoCheckUpdates, startOnBoot: isAutoStartEnabled() });
+      return json(res, 200, { ...saved, startOnBoot: isAutoStartEnabled(), autoStart });
+    }
+  }
+
+  // --- logs (per day) ---
+  if (req.method === 'GET' && u.pathname === '/logs/days') return json(res, 200, { days: listLogDays() });
+  if (req.method === 'GET' && u.pathname === '/logs') {
+    const date = u.searchParams.get('date') || '';
+    return json(res, 200, { date, content: readLogDay(date, Number(u.searchParams.get('tail')) || 0) });
+  }
+  if (req.method === 'POST' && u.pathname === '/logs/delete') {
+    if (!sameOrigin(req)) return json(res, 403, { error: 'forbidden' });
+    const body = await readBody(req);
+    const n = deleteLogDay(body.date || '');
+    log('info', 'daemon', 'logs deleted', { date: body.date, files: n });
+    return json(res, 200, { deleted: n });
+  }
+
+  // --- update check (network — only when called) ---
+  if (req.method === 'GET' && u.pathname === '/update/check') {
+    try {
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort(), 6000);
+      const r = await fetch('https://api.github.com/repos/a1473838623/agent-beacon/releases/latest', {
+        headers: { accept: 'application/vnd.github+json', 'user-agent': 'beacon' }, signal: ac.signal,
+      });
+      clearTimeout(t);
+      const j = await r.json();
+      const latest = (j.tag_name || '').replace(/^v/, '');
+      return json(res, 200, {
+        current: pkg.version, latest,
+        updateAvailable: !!latest && cmpVer(latest, pkg.version) > 0,
+        url: j.html_url || 'https://github.com/a1473838623/agent-beacon/releases',
+        isGitRepo: fs.existsSync(path.join(__dirname, '..', '.git')),
+      });
+    } catch (e) {
+      return json(res, 200, { current: pkg.version, error: 'check failed (offline?): ' + ((e && e.message) || e) });
+    }
+  }
+  if (req.method === 'POST' && u.pathname === '/update/apply') {
+    if (!sameOrigin(req)) return json(res, 403, { error: 'forbidden' });
+    const root = path.join(__dirname, '..');
+    if (!fs.existsSync(path.join(root, '.git'))) return json(res, 200, { ok: false, message: 'Not a git checkout — update with `npm i -g agent-beacon` or re-pull your install.' });
+    execFile('git', ['-C', root, 'pull', '--ff-only'], { timeout: 30000 }, (err, stdout, stderr) => {
+      if (err) return json(res, 200, { ok: false, message: ((stderr || err.message) || '').trim() });
+      json(res, 200, { ok: true, message: ((stdout || '').trim() + '\nRestart to apply: beacon restart').trim() });
+    });
+    return;
   }
 
   // Control endpoints — localhost is already enforced by the bind address; also reject

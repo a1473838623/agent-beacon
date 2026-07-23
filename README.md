@@ -34,7 +34,7 @@ Beacon is a tiny local service that gives every agent a shared, real-time pictur
 - ⚡ **Collision warnings, in-context** — when an agent is about to edit a file another agent is already in, Beacon injects a one-line heads-up *into that agent's own context*, before the edit.
 - 🔪 **Guards risky shared-tree ops** — `checkout` / `reset --hard` / `stash` / `rebase` / `clean`, *and* `git add -A` / `commit -a` (which sweep up another agent's uncommitted work), while another session is editing the tree → the agent is warned (or asked to confirm).
 - 🔁 **Flags redundant builds/deploys** — if a build or deploy is already running in a directory, a second agent kicking off another one is warned that it's just burning CPU/Docker. Parallel is fine; *redundant* is wasteful.
-- 📊 **Live dashboard** — every active agent in real time, **color-coded per session**, with a **details** view per row and a **light/dark** toggle.
+- 📊 **Live dashboard** — every active agent in real time, **color-coded per session**, with per-row **details**, a **light/dark** toggle, and a **Settings** panel (update checks, start-on-login, per-day log viewer).
 - 🪶 **Weightless & invisible** — zero dependencies, 100% local, and it **never blocks your work**. No conflict? You never notice it's there.
 
 > **Safe by design:** Beacon is advisory. It *fails open* — if the daemon is down or anything errors, your session behaves exactly as if Beacon weren't installed. It never denies an edit by default, and in the common (no-overlap) case it adds **zero tokens** to your agent's context.
@@ -147,7 +147,7 @@ All optional — sensible defaults out of the box. Set as environment variables.
 | `BEACON_GUARD` | `warn` | `warn` = advisory context · `ask` = require confirm on destructive git ops · `off` = report only, never warn |
 | `BEACON_TTL_MS` | `900000` | How long an activity lives without a heartbeat (15 min) — crashed sessions self-clear |
 | `BEACON_LOG_LEVEL` | `info` | `error` · `warn` · `info` · `debug`. Errors/warnings are always recorded; `debug` traces every report. |
-| `BEACON_HOME` | `~/.beacon` | Where the daemon stores its pidfile, activity log, and `beacon.log` |
+| `BEACON_HOME` | `~/.beacon` | Where the daemon stores its pidfile, `settings.json`, and daily logs (`logs/beacon-YYYY-MM-DD.log`) |
 
 ---
 
@@ -181,7 +181,7 @@ No. Reporting happens out-of-band (in the hook, not the model), so it costs zero
 Not by default. It's advisory and fails open — daemon down, timeout, bad input, all result in "do nothing, allow." Set `BEACON_GUARD=ask` only if you *want* destructive git ops to pause for confirmation on a real conflict.
 
 **Does it send my code anywhere?**
-No. Everything is local — a daemon on `127.0.0.1`, an append-only log under `~/.beacon`. No network, no telemetry, no accounts.
+No code, ever. Everything runs on `127.0.0.1` with settings and daily logs under `~/.beacon`. The **only** network call Beacon can make is an update check against GitHub's public releases API — and only when you click **Check for updates** or opt into auto-check in Settings (both **off by default**). No telemetry, no accounts; your code and activity never leave your machine.
 
 **Does it replace git / locks / worktrees?**
 No — it's the awareness layer *underneath* them. It doesn't take locks or move files; it makes agents *see* each other so they (or you) can coordinate. Pairs perfectly with git worktrees if you use them.

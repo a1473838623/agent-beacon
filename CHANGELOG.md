@@ -2,6 +2,18 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.7.0] — 2026-07-23
+
+### Added
+- **Settings panel** (⚙ in the dashboard) — auto-check-for-updates and start-on-login toggles (both **off by default**), an update checker, and a per-day log viewer.
+- **Check for updates** — compares your version against the latest GitHub release (manual button, or opt-in auto-check on load). If Beacon is a git checkout, an "Update (git pull)" button appears. This is the *only* network call Beacon makes, and only when you ask.
+- **Start on login** — cross-platform: Windows (hidden-launch `.vbs` in Startup), Linux (XDG `.desktop`), macOS (LaunchAgent). Off by default, toggled from Settings.
+- **Per-day logs** — logging now writes `logs/beacon-YYYY-MM-DD.log`; view or delete logs (per day or all) from Settings or `beacon logs [--date YYYY-MM-DD]`.
+
+### Changed
+- **Status dot is green (healthy) / red (disconnected) only** — dropped the transient yellow state.
+- **Dashboard polish** — sticky footer pinned to the bottom; per-session color moved from a floating bar to a cleaner left-accent border on each card.
+
 ## [0.6.0] — 2026-07-22
 
 ### Added

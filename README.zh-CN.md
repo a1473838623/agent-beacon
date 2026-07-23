@@ -147,7 +147,7 @@ beacon start -d
 | `BEACON_GUARD` | `warn` | `warn` = 建议式上下文 · `ask` = 破坏性 git 操作需确认 · `off` = 只上报、从不警告 |
 | `BEACON_TTL_MS` | `900000` | 一条活动无心跳能存活多久(15 分钟)—— 崩溃的会话会自动清除 |
 | `BEACON_LOG_LEVEL` | `info` | `error` · `warn` · `info` · `debug`。错误/警告永远记录;`debug` 会记录每一次上报。 |
-| `BEACON_HOME` | `~/.beacon` | 守护进程存放 pidfile、活动日志和 `beacon.log` 的位置 |
+| `BEACON_HOME` | `~/.beacon` | 守护进程存放 pidfile、`settings.json` 和每日日志(`logs/beacon-YYYY-MM-DD.log`)的位置 |
 
 ---
 
@@ -181,7 +181,7 @@ BEACON_LOG_LEVEL=debug beacon start   # 记录每一次上报和工具调用
 默认不会。它是建议式的、失败即放行 —— 守护进程没起、超时、输入异常,一律"什么都不做、放行"。只有当你*希望*破坏性 git 操作在真冲突时暂停确认,才设 `BEACON_GUARD=ask`。
 
 **会把我的代码传到别处吗?**
-不会。一切都在本地 —— 一个跑在 `127.0.0.1` 的守护进程,一份 `~/.beacon` 下的追加式日志。无网络、无遥测、无账号。
+代码永远不会。一切都跑在 `127.0.0.1`,设置和每日日志放在 `~/.beacon`。Beacon **唯一**会发起的网络请求,是向 GitHub 公开的发布 API 检查更新 —— 而且只在你点**检查更新**、或在设置里主动开启自动检查时才发(两者**默认关闭**)。无遥测、无账号;你的代码和活动永不离开本机。
 
 **它会取代 git / 锁 / worktree 吗?**
 不会 —— 它是它们*下面*的感知层。它不加锁、不移动文件;它让 agent 们*看见*彼此,好让它们(或你)去协调。如果你用 git worktree,两者完美搭配。

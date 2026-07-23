@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { LOGFILE } from '../src/log.js';
+import { LOGDIR, listLogDays, readLogDay, deleteLogDay } from '../src/log.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -85,21 +85,19 @@ async function cmdStatus() {
   for (const a of activities) {
     console.log(`  • [${a.action}] ${a.target || '(working tree)'}  — ${a.actorLabel || a.actor}`);
   }
-  console.log(`\nlog: ${LOGFILE}   (view with: beacon logs)`);
+  console.log(`\nlogs: ${LOGDIR}   (view with: beacon logs)`);
 }
 
 function cmdLogs(args) {
   const o = parseFlags(args);
-  if ('path' in o) return console.log(LOGFILE);
-  if ('clear' in o) {
-    try { fs.rmSync(LOGFILE, { force: true }); fs.rmSync(LOGFILE + '.1', { force: true }); } catch { /* */ }
-    return console.log('log cleared: ' + LOGFILE);
-  }
+  if ('path' in o) return console.log(LOGDIR);
+  if ('clear' in o) { const n = deleteLogDay('all'); return console.log(`deleted ${n} log file(s) in ${LOGDIR}`); }
+  const days = listLogDays();
+  if (!days.length) return console.log(`(no logs yet in ${LOGDIR})`);
+  const date = o.date || days[0].date;
   const n = Number(o.tail || o.n) || 200;
-  if (!fs.existsSync(LOGFILE)) return console.log(`(no log yet at ${LOGFILE})`);
-  const lines = fs.readFileSync(LOGFILE, 'utf8').split('\n').filter(Boolean);
-  console.log(`# ${LOGFILE}  (last ${Math.min(n, lines.length)} of ${lines.length} lines)\n`);
-  console.log(lines.slice(-n).join('\n'));
+  console.log(`# ${date}  (last ${n} lines)  ·  available days: ${days.map((d) => d.date).join(', ')}\n`);
+  console.log(readLogDay(date, n) || '(empty)');
   console.log(`\n# Reporting a bug? Attach the above (review it first) at:`);
   console.log(`#   https://github.com/a1473838623/agent-beacon/issues/new`);
 }
