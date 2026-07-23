@@ -2,6 +2,11 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.7.1] — 2026-07-23
+
+### Changed
+- **Cleaner activity rows.** The "overlap" state is now a subtle background tint instead of a full yellow border, so it no longer clashes with the per-session left-accent color. Dropped the redundant color dot — each row's session color is the left-accent border.
+
 ## [0.7.0] — 2026-07-23
 
 ### Added

@@ -8,10 +8,12 @@
   :root {
     --bg: #0b0e14; --panel: #141922; --border: #232a36; --text: #e6edf3;
     --muted: #8b97a7; --accent: #4c9aff; --warn: #ffb547; --danger: #ff6b6b; --ok: #3fb950;
+    --conflict-bg: #211d13;
   }
   html[data-theme="light"] {
     --bg: #f6f8fa; --panel: #ffffff; --border: #d0d7de; --text: #1f2328;
     --muted: #656d76; --accent: #0969da; --warn: #9a6700; --danger: #cf222e; --ok: #1a7f37;
+    --conflict-bg: #fff7e8;
   }
   * { box-sizing: border-box; }
   body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -27,8 +29,6 @@
            border-radius: 7px; padding: 5px 11px; font-size: 12px; cursor: pointer; }
   button:hover { border-color: var(--accent); }
   #quit:hover { border-color: var(--danger); color: var(--danger); }
-  .actorchip { display: inline-flex; align-items: center; gap: 5px; }
-  .actordot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
   .detailbtn { background: transparent; border: 1px solid var(--border); color: var(--muted);
                border-radius: 6px; padding: 4px 9px; font-size: 12px; cursor: pointer; white-space: nowrap; }
   .detailbtn:hover { color: var(--text); border-color: var(--accent); }
@@ -54,7 +54,7 @@
   .empty { color: var(--muted); text-align: center; padding: 64px 0; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
           padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
-  .card.conflict { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn) inset; }
+  .card.conflict { background: var(--conflict-bg); }
   .badge { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
            padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
   .b-editing { background: rgba(76,154,255,.15); color: var(--accent); }
@@ -170,7 +170,7 @@
         <span class="badge ${badgeClass(a.action)}">${escapeHtml(a.action.replace('git:', 'git '))}</span>
         <div class="grow">
           <div class="target">${escapeHtml(shortTarget(a.target)) || '(working tree)'}</div>
-          <div class="meta"><span class="actorchip"><span class="actordot" style="background:${color}"></span><span class="who">${escapeHtml(a.actorLabel || a.actor)}</span></span> · ${ago(a.startedAt)}${a.exclusive ? ' · exclusive' : ''}</div>
+          <div class="meta"><span class="who">${escapeHtml(a.actorLabel || a.actor)}</span> · ${ago(a.startedAt)}${a.exclusive ? ' · exclusive' : ''}</div>
         </div>
         ${conflict ? '<span class="warntag">⚠ overlap</span>' : ''}
         <button class="detailbtn" data-id="${a.id}">details</button>
