@@ -105,6 +105,21 @@ export class Store {
     return out;
   }
 
+  // Clear activities. With an actor, clears just that actor's (e.g. a session that ended);
+  // with no actor, clears everything (the dashboard "Clear" button). Returns how many.
+  clearActor(actor) {
+    let n = 0;
+    for (const [id, a] of this.activities) {
+      if (!actor || a.actor === actor) {
+        this.activities.delete(id);
+        this._append({ ...a, state: 'done', endedAt: Date.now() });
+        n++;
+      }
+    }
+    if (n) this._emit();
+    return n;
+  }
+
   list(exclude) {
     this._reap();
     return [...this.activities.values()].filter(a => !exclude || a.actor !== exclude);

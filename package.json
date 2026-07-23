@@ -1,6 +1,6 @@
 {
   "name": "agent-beacon",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Real-time presence and collision-avoidance for parallel AI coding agents. See what every Claude Code / MCP / CLI agent is touching — and never let two agents clobber the same file again.",
   "type": "module",
   "bin": {

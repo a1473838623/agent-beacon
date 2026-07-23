@@ -83,7 +83,9 @@ async function main() {
   const conflicts = await report({
     actor, actorLabel, action, target, cwd,
     detail: tool === 'Bash' ? String(ti.command || '').slice(0, 120) : '',
-    ttlMs: dangerous ? 30000 : undefined,
+    // Edit presence is momentary — keep it short so it fades if the session goes idle
+    // without a Stop event (crash / older client). The Stop hook clears it promptly.
+    ttlMs: dangerous ? 30000 : 180000,
   });
 
   if (!conflicts || conflicts.length === 0) return allow();

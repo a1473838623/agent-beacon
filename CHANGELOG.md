@@ -2,6 +2,17 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.5.0] — 2026-07-22
+
+### Fixed
+- **Activities no longer linger after editing stops.** Added a Claude Code **Stop hook** (`hooks/stop.js`) that clears a session's activity the moment its turn ends, and shortened the edit-presence TTL from 15 min to 3 min as a crash backstop. Previously a one-second edit showed as "editing" for 15 minutes.
+- `beacon init` now **upgrades older installs in place** — if the PreToolUse hook is already present but the Stop hook isn't, it adds the Stop hook (without duplicating anything). Re-run `beacon init` after upgrading.
+
+### Added
+- **Dashboard controls** — Clear / Restart / Quit buttons in the header.
+- **Daemon control endpoints** — `POST /clear` (clear one actor or everything), `POST /restart` (hot restart with port hand-off), `POST /shutdown`. Guarded against cross-origin browser requests.
+- **`beacon restart`** command; `beacon logs`/`status` unchanged.
+
 ## [0.4.0] — 2026-07-22
 
 ### Changed

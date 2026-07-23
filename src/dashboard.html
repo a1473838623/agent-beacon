@@ -18,6 +18,11 @@
   .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
   .sub { color: var(--muted); font-size: 12px; }
   .count { margin-left: auto; color: var(--muted); font-size: 13px; }
+  .controls { display: flex; gap: 8px; }
+  button { background: var(--panel); color: var(--text); border: 1px solid var(--border);
+           border-radius: 7px; padding: 5px 11px; font-size: 12px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  #quit:hover { border-color: var(--danger); color: var(--danger); }
   main { padding: 20px 24px; max-width: 1000px; margin: 0 auto; }
   .empty { color: var(--muted); text-align: center; padding: 64px 0; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
@@ -43,6 +48,11 @@
   <span class="logo">Beacon<span>.</span></span>
   <span class="sub">live agent activity</span>
   <span class="count" id="count">—</span>
+  <span class="controls">
+    <button id="clear" title="Clear all activity now">Clear</button>
+    <button id="restart" title="Restart the daemon">Restart</button>
+    <button id="quit" title="Stop the daemon">Quit</button>
+  </span>
 </header>
 <main>
   <div id="list"></div>
@@ -112,6 +122,21 @@
   setInterval(() => { // refresh relative timestamps
     document.querySelectorAll('.card').length && fetch('/activity').then(r => r.json()).then(d => render(d.activities)).catch(() => {});
   }, 5000);
+
+  async function ctl(path) {
+    try { await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }); return true; }
+    catch { return false; }
+  }
+  document.getElementById('clear').onclick = () => ctl('/clear');
+  document.getElementById('restart').onclick = async () => {
+    if (!confirm('Restart the Beacon daemon?')) return;
+    await ctl('/restart'); countEl.textContent = 'restarting…'; dot.style.background = 'var(--warn)';
+    // EventSource reconnects automatically once the new daemon is up.
+  };
+  document.getElementById('quit').onclick = async () => {
+    if (!confirm('Stop the Beacon daemon? The dashboard will go offline until you start it again.')) return;
+    await ctl('/shutdown'); countEl.textContent = 'stopped'; dot.style.background = 'var(--danger)';
+  };
 </script>
 </body>
 </html>

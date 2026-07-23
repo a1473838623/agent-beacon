@@ -185,6 +185,9 @@ BEACON_LOG_LEVEL=debug beacon start   # 记录每一次上报和工具调用
 **它会取代 git / 锁 / worktree 吗?**
 不会 —— 它是它们*下面*的感知层。它不加锁、不移动文件;它让 agent 们*看见*彼此,好让它们(或你)去协调。如果你用 git worktree,两者完美搭配。
 
+**编辑已经结束了,活动还在显示?**
+会话这一轮结束时会自动清除(靠一个 Stop hook);否则会在最后一次编辑几分钟后淡出。你也可以点面板上的 **Clear** 立刻清空 —— 面板顶部还有 **Restart** / **Quit** 直接重启/停掉守护进程(或用 `beacon restart` / `beacon stop`)。从旧版升级?重跑一次 `beacon init` 补上 Stop hook,再 `beacon restart`。
+
 ---
 
 ## 路线图

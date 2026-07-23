@@ -14,6 +14,7 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const BEACON_HOME = process.env.BEACON_HOME || path.join(os.homedir(), '.beacon');
 const DAEMON = path.join(ROOT, 'src', 'daemon.js');
 const HOOK = path.join(ROOT, 'hooks', 'pretooluse.js');
+const STOP = path.join(ROOT, 'hooks', 'stop.js');
 const MCP = path.join(ROOT, 'mcp', 'server.js');
 
 async function fetchJson(pathn, opts, timeoutMs = 1500) {
@@ -64,6 +65,16 @@ function cmdStop() {
     fs.unlinkSync(pidfile);
     console.log('beacon stopped (pid ' + pid + ')');
   } catch { console.log('beacon does not appear to be running'); }
+}
+
+async function cmdRestart() {
+  if (await isUp()) {
+    try { await fetchJson('/restart', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }); } catch { /* */ }
+    console.log('beacon restart requested');
+  } else {
+    startDetached();
+    console.log('beacon started (was not running)');
+  }
 }
 
 async function cmdStatus() {
@@ -151,23 +162,37 @@ function installClaudeHook(file) {
   let settings = {};
   if (fs.existsSync(file)) { try { settings = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { settings = {}; } }
   settings.hooks = settings.hooks || {};
-  settings.hooks.PreToolUse = settings.hooks.PreToolUse || [];
-  if (JSON.stringify(settings.hooks.PreToolUse).includes('pretooluse.js')) return 'present';
-  settings.hooks.PreToolUse.push({ matcher: 'Edit|Write|MultiEdit|Bash', hooks: [{ type: 'command', command: `node "${HOOK}"` }] });
+  const s = JSON.stringify(settings.hooks);
+  const hasPre = s.includes('pretooluse.js');
+  const hasStop = s.includes('stop.js');
+  if (hasPre && hasStop) return 'present';
+  if (!hasPre) {
+    settings.hooks.PreToolUse = settings.hooks.PreToolUse || [];
+    settings.hooks.PreToolUse.push({ matcher: 'Edit|Write|MultiEdit|Bash', hooks: [{ type: 'command', command: `node "${HOOK}"` }] });
+  }
+  if (!hasStop) { // added in a later version — upgrade older installs too
+    settings.hooks.Stop = settings.hooks.Stop || [];
+    settings.hooks.Stop.push({ hooks: [{ type: 'command', command: `node "${STOP}"` }] });
+  }
   fs.writeFileSync(file, JSON.stringify(settings, null, 2));
-  return 'added';
+  return hasPre ? 'upgraded' : 'added';
 }
 
-// Remove the Beacon hook from a settings file, preserving everything else. Returns true if it removed something.
+// Remove Beacon's hooks (PreToolUse + Stop) from a settings file, preserving everything else.
 function removeClaudeHook(file) {
   if (!fs.existsSync(file)) return false;
   let s; try { s = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return false; }
-  if (!s.hooks || !Array.isArray(s.hooks.PreToolUse)) return false;
-  const before = s.hooks.PreToolUse.length;
-  s.hooks.PreToolUse = s.hooks.PreToolUse.filter((e) => !(e.hooks || []).some((h) => typeof h.command === 'string' && h.command.includes('pretooluse.js')));
-  if (s.hooks.PreToolUse.length === before) return false;
-  if (s.hooks.PreToolUse.length === 0) delete s.hooks.PreToolUse;
-  if (s.hooks && Object.keys(s.hooks).length === 0) delete s.hooks;
+  if (!s.hooks) return false;
+  let changed = false;
+  for (const key of ['PreToolUse', 'Stop']) {
+    if (!Array.isArray(s.hooks[key])) continue;
+    const before = s.hooks[key].length;
+    s.hooks[key] = s.hooks[key].filter((e) => !(e.hooks || []).some((h) => typeof h.command === 'string' && /pretooluse\.js|stop\.js/.test(h.command)));
+    if (s.hooks[key].length !== before) changed = true;
+    if (s.hooks[key].length === 0) delete s.hooks[key];
+  }
+  if (!changed) return false;
+  if (Object.keys(s.hooks).length === 0) delete s.hooks;
   fs.writeFileSync(file, JSON.stringify(s, null, 2));
   return true;
 }
@@ -182,8 +207,9 @@ function cmdInit(args) {
   const state = installClaudeHook(targetFile);
   const removed = otherFile !== targetFile && removeClaudeHook(otherFile);
 
-  console.log(state === 'added'
-    ? `✓ Beacon hook installed [${level}]: ${targetFile}`
+  console.log(
+    state === 'added' ? `✓ Beacon hook installed [${level}]: ${targetFile}`
+    : state === 'upgraded' ? `✓ Beacon hook upgraded (added Stop hook) [${level}]: ${targetFile}`
     : `✓ Beacon hook already present [${level}]: ${targetFile}`);
   if (removed) console.log(`✓ Disabled the ${other}-level hook to avoid double-firing: ${otherFile}`);
 
@@ -275,6 +301,7 @@ Usage:
   beacon mcp                 Run the stdio MCP server (spawned by Codex/Cursor/etc.)
   beacon start [-d]          Start the daemon (-d = detached/background)
   beacon stop                Stop the daemon
+  beacon restart             Restart the daemon
   beacon status              Show active agents (and the log path)
   beacon logs [--tail N]     Show the local log (--clear to wipe, --path to print path)
   beacon watch <dir>         Report file edits from ANY editor/agent in <dir>
@@ -289,6 +316,7 @@ const [cmd, ...args] = process.argv.slice(2);
   switch (cmd) {
     case 'start': return cmdStart(args);
     case 'stop': return cmdStop();
+    case 'restart': return cmdRestart();
     case 'status': return cmdStatus();
     case 'report': return cmdReport(args);
     case 'watch': return cmdWatch(args);
