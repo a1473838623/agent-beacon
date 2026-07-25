@@ -2,6 +2,11 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.8.7] — 2026-07-25
+
+### Added
+- **Conflict notifications** (Settings -> "Notify me on conflicts", off by default). When two agents edit the same file, the **daemon** fires a native OS notification — so it reaches you even when the dashboard tab is closed or backgrounded (as long as the daemon is running; pairs with start-on-login). Deduped per file with a 2-minute cooldown. Zero-dependency: Windows toast via PowerShell, macOS `osascript`, Linux `notify-send`.
+
 ## [0.8.6] — 2026-07-25
 
 ### Changed

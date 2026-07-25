@@ -128,6 +128,7 @@
     <div class="section">
       <label class="toggle"><input type="checkbox" id="setAutoCheck"> Auto-check for updates <span class="hint">(off by default · contacts GitHub only when enabled)</span></label>
       <label class="toggle"><input type="checkbox" id="setBoot"> Start Beacon on login <span class="hint" id="bootHint"></span></label>
+      <label class="toggle"><input type="checkbox" id="setNotify"> Notify me on conflicts <span class="hint">system notification — works even when this page is closed</span></label>
       <div class="row" style="font-size:13px">Group edits:
         <select id="setGroup">
           <option value="off">Off — flat list</option>
@@ -372,6 +373,7 @@
       return;
     }
     document.getElementById('setAutoCheck').checked = !!s.autoCheckUpdates;
+    document.getElementById('setNotify').checked = !!s.notifyOnConflict;
     document.getElementById('setGroup').value = s.grouping || 'off';
     const note = document.getElementById('groupHookNote');
     if ((s.grouping || 'off') === 'off') {
@@ -417,6 +419,7 @@
   soverlay.onclick = (e) => { if (e.target === soverlay) closeSettings(); };
 
   document.getElementById('setAutoCheck').onchange = async (e) => { await postJSON('/settings', { autoCheckUpdates: e.target.checked }); toast('Setting saved.'); };
+  document.getElementById('setNotify').onchange = async (e) => { await postJSON('/settings', { notifyOnConflict: e.target.checked }); toast(e.target.checked ? 'Conflict notifications on.' : 'Conflict notifications off.'); };
   document.getElementById('setGroup').onchange = async (e) => {
     await postJSON('/settings', { grouping: e.target.value });
     await loadSettings(); // refresh the hook-status note

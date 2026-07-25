@@ -10,6 +10,19 @@ import { Store, BEACON_HOME } from './store.js';
 import { log, listLogDays, readLogDay, deleteLogDay } from './log.js';
 import { getSettings, saveSettings } from './settings.js';
 import { setAutoStart, isAutoStartEnabled } from './autostart.js';
+import { notify } from './notify.js';
+
+// Fire an OS notification when a target newly conflicts — deduped per target (2 min cooldown).
+const notifiedConflicts = new Map();
+const short2 = (t) => String(t || '').replace(/\\/g, '/').split('/').slice(-2).join('/');
+function maybeNotifyConflict(target, actors) {
+  if (!getSettings().notifyOnConflict) return;
+  const now = Date.now();
+  if (now - (notifiedConflicts.get(target) || 0) < 120000) return;
+  notifiedConflicts.set(target, now);
+  const who = [...new Set(actors)].map((a) => String(a || '').slice(0, 8)).join(' & ');
+  notify('⚠ Beacon: edit conflict', `${who} are editing the same file — ${short2(target)}`);
+}
 
 // Is Beacon's UserPromptSubmit hook present in the user's global Claude Code settings?
 function promptHookInstalled() {
@@ -66,6 +79,7 @@ const server = http.createServer(async (req, res) => {
     const result = store.report(body);
     if (result.conflicts && result.conflicts.length) {
       log('info', 'daemon', 'overlap detected', { actor: body.actor, target: body.target, others: result.conflicts.length });
+      maybeNotifyConflict(body.target, [body.actor, ...result.conflicts.map((c) => c.actor)]);
     } else {
       log('debug', 'daemon', 'report', { actor: body.actor, action: body.action, target: body.target });
     }
