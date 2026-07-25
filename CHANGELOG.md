@@ -2,6 +2,11 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.8.4] — 2026-07-25
+
+### Fixed
+- The "Group edits" row no longer shows a pointer cursor on its hint text — it reused the checkbox-label style (`cursor: pointer`), which made the plain description look clickable. It is not clickable; now it renders as normal text.
+
 ## [0.8.3] — 2026-07-23
 
 ### Changed
