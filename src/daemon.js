@@ -2,6 +2,7 @@
 // Zero dependencies. Single instance guaranteed by binding a fixed port.
 import http from 'node:http';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawn, execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,12 @@ import { Store, BEACON_HOME } from './store.js';
 import { log, listLogDays, readLogDay, deleteLogDay } from './log.js';
 import { getSettings, saveSettings } from './settings.js';
 import { setAutoStart, isAutoStartEnabled } from './autostart.js';
+
+// Is Beacon's UserPromptSubmit hook present in the user's global Claude Code settings?
+function promptHookInstalled() {
+  try { return fs.readFileSync(path.join(os.homedir(), '.claude', 'settings.json'), 'utf8').includes('userprompt.js'); }
+  catch { return false; }
+}
 
 function cmpVer(a, b) {
   const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
@@ -73,7 +80,7 @@ const server = http.createServer(async (req, res) => {
 
   // --- settings ---
   if (u.pathname === '/settings') {
-    if (req.method === 'GET') return json(res, 200, { ...getSettings(), startOnBoot: isAutoStartEnabled(), platform: process.platform });
+    if (req.method === 'GET') return json(res, 200, { ...getSettings(), startOnBoot: isAutoStartEnabled(), platform: process.platform, promptHookInstalled: promptHookInstalled() });
     if (req.method === 'POST') {
       if (!sameOrigin(req)) return json(res, 403, { error: 'forbidden' });
       const body = await readBody(req);
@@ -84,6 +91,17 @@ const server = http.createServer(async (req, res) => {
       log('info', 'daemon', 'settings updated', { autoCheckUpdates: saved.autoCheckUpdates, startOnBoot: isAutoStartEnabled() });
       return json(res, 200, { ...saved, startOnBoot: isAutoStartEnabled(), autoStart });
     }
+  }
+
+  // --- install hooks (runs `beacon init`; user clicks the button = consent) ---
+  if (req.method === 'POST' && u.pathname === '/install-hooks') {
+    if (!sameOrigin(req)) return json(res, 403, { error: 'forbidden' });
+    const BIN = path.join(__dirname, '..', 'bin', 'beacon.js');
+    execFile(process.execPath, [BIN, 'init'], { timeout: 10000 }, (err, stdout, stderr) => {
+      log('info', 'daemon', 'install-hooks requested', { ok: !err });
+      json(res, 200, { ok: !err, output: ((stdout || '') + (stderr || '')).trim(), installed: promptHookInstalled() });
+    });
+    return;
   }
 
   // --- logs (per day) ---

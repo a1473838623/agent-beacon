@@ -121,6 +121,7 @@
         </select>
         <span class="hint">session/turn stores your prompt's first line, locally</span>
       </div>
+      <div class="hint" id="groupHookNote"></div>
     </div>
     <h3>Updates</h3>
     <div class="section">
@@ -211,10 +212,7 @@
         }
         g.items.push(a); g.last = Math.max(g.last, a.heartbeat);
       }
-      const hint = (!titles || !titles.length)
-        ? '<div class="hint" style="margin:0 2px 12px">No titles captured yet — run <code>beacon init</code> and start a new session so turn titles get recorded.</div>'
-        : '';
-      listEl.innerHTML = hint + [...groups.values()].sort((x, y) => y.last - x.last).map((g) => {
+      listEl.innerHTML = [...groups.values()].sort((x, y) => y.last - x.last).map((g) => {
         const t = g.title ? `<span class="gtitle">${escapeHtml(g.title)}</span>` : '<span class="gtitle muted">(no title yet)</span>';
         return `<div class="group"><div class="grouphead">${chip(g.a)} ${t}</div>${g.items.map((a) => cardHtml(a, true)).join('')}</div>`;
       }).join('');
@@ -340,6 +338,19 @@
     }
     document.getElementById('setAutoCheck').checked = !!s.autoCheckUpdates;
     document.getElementById('setGroup').value = s.grouping || 'off';
+    const note = document.getElementById('groupHookNote');
+    if ((s.grouping || 'off') === 'off') {
+      note.textContent = '';
+    } else if (s.promptHookInstalled) {
+      note.textContent = '✓ Prompt hook installed — new sessions will capture titles.';
+    } else {
+      note.innerHTML = '⚠ Prompt hook not installed — no titles will be captured. <button class="detailbtn" id="installHook">Install hook</button>';
+      document.getElementById('installHook').onclick = async () => {
+        const r = await postJSON('/install-hooks', {});
+        toast(r && r.ok ? 'Hook installed — start a NEW session to capture titles.' : 'Install failed — see beacon logs.', !(r && r.ok));
+        loadSettings();
+      };
+    }
     setBoot.checked = !!s.startOnBoot;
     const supported = ['win32', 'linux', 'darwin'].includes(s.platform);
     bootHint.textContent = supported ? '' : '(not supported on ' + s.platform + ')';
@@ -373,6 +384,7 @@
   document.getElementById('setAutoCheck').onchange = async (e) => { await postJSON('/settings', { autoCheckUpdates: e.target.checked }); toast('Setting saved.'); };
   document.getElementById('setGroup').onchange = async (e) => {
     await postJSON('/settings', { grouping: e.target.value });
+    await loadSettings(); // refresh the hook-status note
     const d = await getJSON('/activity'); // re-render immediately with the new mode
     if (d) render(d.activities, d.titles, d.grouping);
     toast('Grouping: ' + e.target.options[e.target.selectedIndex].text);

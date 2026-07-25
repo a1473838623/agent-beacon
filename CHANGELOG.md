@@ -2,6 +2,12 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.8.2] — 2026-07-23
+
+### Changed
+- Moved the "prompt hook not installed" notice out of the dashboard body into **Settings**, next to the grouping selector — no more banner floating over the empty state.
+- Added a one-click **Install hook** button in Settings (runs `beacon init` for you, with your click as the consent) plus a live installed / not-installed status. Beacon still never edits your `~/.claude` without an explicit action — no silent auto-init.
+
 ## [0.8.1] — 2026-07-23
 
 ### Fixed
