@@ -32,7 +32,7 @@ async function isUp() {
 }
 
 function startDetached() {
-  const child = spawn(process.execPath, [DAEMON], { detached: true, stdio: 'ignore' });
+  const child = spawn(process.execPath, [DAEMON], { detached: true, stdio: 'ignore', windowsHide: true });
   child.unref();
 }
 

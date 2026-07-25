@@ -97,7 +97,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/install-hooks') {
     if (!sameOrigin(req)) return json(res, 403, { error: 'forbidden' });
     const BIN = path.join(__dirname, '..', 'bin', 'beacon.js');
-    execFile(process.execPath, [BIN, 'init'], { timeout: 10000 }, (err, stdout, stderr) => {
+    execFile(process.execPath, [BIN, 'init'], { timeout: 10000, windowsHide: true }, (err, stdout, stderr) => {
       log('info', 'daemon', 'install-hooks requested', { ok: !err });
       json(res, 200, { ok: !err, output: ((stdout || '') + (stderr || '')).trim(), installed: promptHookInstalled() });
     });
@@ -143,9 +143,14 @@ const server = http.createServer(async (req, res) => {
     if (!sameOrigin(req)) return json(res, 403, { error: 'forbidden' });
     const root = path.join(__dirname, '..');
     if (!fs.existsSync(path.join(root, '.git'))) return json(res, 200, { ok: false, message: 'Not a git checkout — update with `npm i -g agent-beacon` or re-pull your install.' });
-    execFile('git', ['-C', root, 'pull', '--ff-only'], { timeout: 30000 }, (err, stdout, stderr) => {
-      if (err) return json(res, 200, { ok: false, message: ((stderr || err.message) || '').trim() });
-      json(res, 200, { ok: true, message: ((stdout || '').trim() + '\nRestart to apply: beacon restart').trim() });
+    execFile('git', ['-C', root, 'pull', '--ff-only'], { timeout: 30000, windowsHide: true }, (err, stdout, stderr) => {
+      if (err) { log('warn', 'daemon', 'update pull failed: ' + ((stderr || err.message) || '')); return json(res, 200, { ok: false, message: ((stderr || err.message) || 'git pull failed').trim() }); }
+      log('info', 'daemon', 'update pulled, restarting to apply');
+      json(res, 200, { ok: true, message: (((stdout || '').trim()) + ' — restarting to apply…').trim() });
+      // Restart so the daemon loads the (possibly) pulled code — same as /restart.
+      try { spawn(process.execPath, [__filename], { detached: true, stdio: 'ignore', windowsHide: true, env: { ...process.env, BEACON_WAIT_PORT: '1' } }).unref(); }
+      catch (e) { log('error', 'daemon', 'update restart spawn failed: ' + e.message); }
+      setTimeout(shutdown, 300);
     });
     return;
   }
@@ -163,7 +168,7 @@ const server = http.createServer(async (req, res) => {
     json(res, 200, { ok: true });
     if (u.pathname === '/restart') {
       log('info', 'daemon', 'restart requested');
-      try { spawn(process.execPath, [__filename], { detached: true, stdio: 'ignore', env: { ...process.env, BEACON_WAIT_PORT: '1' } }).unref(); }
+      try { spawn(process.execPath, [__filename], { detached: true, stdio: 'ignore', windowsHide: true, env: { ...process.env, BEACON_WAIT_PORT: '1' } }).unref(); }
       catch (e) { log('error', 'daemon', 'restart spawn failed: ' + e.message); }
       return setTimeout(shutdown, 150);
     }

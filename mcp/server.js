@@ -33,7 +33,7 @@ const daemonPost = (p, body) => fetchJson(p, { method: 'POST', headers: { 'conte
 
 async function ensureDaemon() {
   try { const h = await fetchJson('/health', {}, 400); if (h.ok) return; } catch { /* start it */ }
-  try { spawn(process.execPath, [DAEMON], { detached: true, stdio: 'ignore' }).unref(); } catch { /* */ }
+  try { spawn(process.execPath, [DAEMON], { detached: true, stdio: 'ignore', windowsHide: true }).unref(); } catch { /* */ }
   for (let i = 0; i < 15; i++) {
     await new Promise((r) => setTimeout(r, 100));
     try { const h = await fetchJson('/health', {}, 300); if (h.ok) return; } catch { /* */ }

@@ -56,7 +56,7 @@ async function report(body) {
   } catch (e) {
     // Daemon likely down: lazy-start it for next time, but fail open now.
     log('warn', 'hook', 'daemon unreachable, failing open (will lazy-start): ' + (e && e.message || e));
-    try { spawn(process.execPath, [path.join(__dirname, '..', 'src', 'daemon.js')], { detached: true, stdio: 'ignore' }).unref(); } catch (e2) { log('error', 'hook', 'lazy-start failed: ' + (e2 && e2.message || e2)); }
+    try { spawn(process.execPath, [path.join(__dirname, '..', 'src', 'daemon.js')], { detached: true, stdio: 'ignore', windowsHide: true }).unref(); } catch (e2) { log('error', 'hook', 'lazy-start failed: ' + (e2 && e2.message || e2)); }
     return null;
   } finally { clearTimeout(t); }
 }

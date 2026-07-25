@@ -2,6 +2,12 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.8.5] — 2026-07-25
+
+### Fixed
+- **The Update button now works.** "Update (git pull)" used to pull and then just tell you to restart manually — which for an already-current checkout looked like it did nothing. It now pulls **and auto-restarts** the daemon to load the new code, so the version updates in one click.
+- **No more flashing black console window on Windows** when updating, installing hooks, or restarting — `git` / `node` spawns now run with `windowsHide`.
+
 ## [0.8.4] — 2026-07-25
 
 ### Fixed

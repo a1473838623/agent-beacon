@@ -408,9 +408,10 @@
     } else el.textContent = `up to date (v${escapeHtml(r.current)})`;
   };
   document.getElementById('applyUpd').onclick = async () => {
-    if (!confirm('Run `git pull` to update Beacon? Restart the daemon afterward.')) return;
+    if (!confirm('Update Beacon (git pull) and restart the daemon to apply?')) return;
     const r = await postJSON('/update/apply', {});
-    toast(r && r.ok ? 'Updated — click Restart to apply.' : 'Update: ' + ((r && r.message) || 'failed'), !(r && r.ok));
+    if (r && r.ok) { toast('Updating & restarting…'); setStatus(false); }
+    else toast('Update failed: ' + ((r && r.message) || 'unknown'), true);
   };
   document.getElementById('logDay').onchange = viewLog;
   document.getElementById('logRefresh').onclick = () => loadLogDays(document.getElementById('logDay').value);
