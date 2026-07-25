@@ -150,6 +150,7 @@ export class Store {
     return [...this.activities.values()].filter(a => !exclude || a.actor !== exclude);
   }
 
+  touch() { this._emit(); } // force a broadcast (e.g. after a settings change) so dashboards update live
   onChange(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   _emit() { const snap = this.list(); for (const fn of this.listeners) { try { fn(snap); } catch { /* */ } } }
 }

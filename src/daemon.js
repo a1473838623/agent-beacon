@@ -80,6 +80,7 @@ const server = http.createServer(async (req, res) => {
       let autoStart = null;
       if (typeof body.startOnBoot === 'boolean') autoStart = setAutoStart(body.startOnBoot);
       const saved = saveSettings(body);
+      store.touch(); // broadcast so open dashboards re-render immediately (e.g. grouping change)
       log('info', 'daemon', 'settings updated', { autoCheckUpdates: saved.autoCheckUpdates, startOnBoot: isAutoStartEnabled() });
       return json(res, 200, { ...saved, startOnBoot: isAutoStartEnabled(), autoStart });
     }

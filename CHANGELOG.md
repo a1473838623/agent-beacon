@@ -2,6 +2,12 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.8.1] — 2026-07-23
+
+### Fixed
+- **Switching the grouping mode is now instant.** Changing *Group edits* (Off / By session / By turn) re-renders the dashboard immediately — the daemon broadcasts on a settings change and the dropdown also re-fetches — instead of waiting for the next activity or the 5s poll.
+- When grouping is on but no titles have been captured yet, the dashboard shows a hint to run `beacon init` and start a new session (titles require the `UserPromptSubmit` hook).
+
 ## [0.8.0] — 2026-07-23
 
 ### Added
