@@ -342,7 +342,7 @@
     if ((s.grouping || 'off') === 'off') {
       note.textContent = '';
     } else if (s.promptHookInstalled) {
-      note.textContent = '✓ Prompt hook installed — new sessions will capture titles.';
+      note.textContent = '✓ Prompt hook installed — titles capture on newly-started sessions (restart a running one to include it).';
     } else {
       note.innerHTML = '⚠ Prompt hook not installed — no titles will be captured. <button class="detailbtn" id="installHook">Install hook</button>';
       document.getElementById('installHook').onclick = async () => {

@@ -2,6 +2,11 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.8.3] — 2026-07-23
+
+### Changed
+- The installed-hook note in Settings now says titles only capture on **newly-started** sessions (restart a running one to include it) — so nobody expects titles to appear in an already-running session.
+
 ## [0.8.2] — 2026-07-23
 
 ### Changed
