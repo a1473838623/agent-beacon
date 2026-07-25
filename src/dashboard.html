@@ -54,7 +54,16 @@
              max-height: 300px; overflow: auto; font-family: ui-monospace, Menlo, Consolas, monospace;
              font-size: 12px; white-space: pre-wrap; word-break: break-all; margin: 0; }
   main { padding: 20px 24px; max-width: 1000px; margin: 0 auto; width: 100%; flex: 1 0 auto; }
-  .empty { color: var(--muted); text-align: center; padding: 64px 0; }
+  .hero { display: flex; flex-direction: column; align-items: center; justify-content: center;
+          text-align: center; padding: 90px 20px; gap: 10px; }
+  .hero-check { width: 58px; height: 58px; border-radius: 50%; border: 2px solid var(--ok);
+                color: var(--ok); font-size: 30px; display: flex; align-items: center; justify-content: center; }
+  .hero-title { font-size: 26px; font-weight: 700; color: var(--text); }
+  .hero-sub { font-size: 13.5px; color: var(--muted); max-width: 440px; }
+  .banner { border-radius: 10px; padding: 12px 16px; font-size: 13.5px; font-weight: 600; margin-bottom: 14px; }
+  .banner-warn { background: var(--conflict-bg); border: 1px solid var(--warn); color: var(--warn); }
+  .banner-ok { text-align: center; color: var(--muted); font-weight: 400; margin: 18px 0 0; }
+  .banner-ok b { color: var(--ok); }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
           padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; }
   .card.conflict { background: var(--conflict-bg); }
@@ -93,8 +102,14 @@
   </span>
 </header>
 <main>
+  <div id="banner"></div>
   <div id="list"></div>
-  <div class="empty" id="empty">No agents active right now. Activity appears here the moment a session starts editing.</div>
+  <div id="okbanner"></div>
+  <div class="hero" id="hero" style="display:none">
+    <div class="hero-check">✓</div>
+    <div class="hero-title">No conflicts</div>
+    <div class="hero-sub">Beacon is watching. The moment two agents edit the same file, it shows up here.</div>
+  </div>
 </main>
 <footer>Beacon runs 100% locally · <a href="https://github.com/a1473838623/agent-beacon">github.com/a1473838623/agent-beacon</a></footer>
 <div id="toast" style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);max-width:80%;font-size:13px;opacity:0;transition:opacity .3s;background:var(--panel);border:1px solid var(--border);padding:9px 15px;border-radius:8px;"></div>
@@ -143,7 +158,9 @@
 
 <script>
   const listEl = document.getElementById('list');
-  const emptyEl = document.getElementById('empty');
+  const hero = document.getElementById('hero');
+  const banner = document.getElementById('banner');
+  const okbanner = document.getElementById('okbanner');
   const countEl = document.getElementById('count');
   const dot = document.getElementById('dot');
   let lastItems = [];
@@ -187,13 +204,31 @@
 
   function render(items, titles, grouping) {
     items = (items || []).slice().sort((a, b) => b.heartbeat - a.heartbeat);
-    countEl.textContent = items.length ? items.length + ' active' : '';
-    emptyEl.style.display = items.length ? 'none' : 'block';
     lastItems = items;
 
     const byTarget = {};
     for (const a of items) { const k = (a.target || '').toLowerCase(); (byTarget[k] = byTarget[k] || new Set()).add(a.actor); }
     conflictTargets = new Set(Object.keys(byTarget).filter((k) => k && byTarget[k].size > 1));
+
+    // Beacon's headline state is conflict status, not "how many sessions".
+    const hasActivity = items.length > 0;
+    const nConflict = conflictTargets.size;
+    const nAgents = new Set(items.map((a) => a.actor)).size;
+    countEl.textContent = hasActivity ? items.length + ' active' : '';
+
+    hero.style.display = hasActivity ? 'none' : 'flex'; // big centered "No conflicts" when idle
+
+    if (nConflict > 0) {
+      banner.className = 'banner banner-warn';
+      banner.textContent = `⚠ Conflict — ${nConflict} file${nConflict > 1 ? 's' : ''} being edited by more than one agent (highlighted below).`;
+      banner.style.display = 'block';
+    } else { banner.style.display = 'none'; banner.textContent = ''; }
+
+    if (hasActivity && nConflict === 0) {
+      okbanner.className = 'banner banner-ok';
+      okbanner.innerHTML = `<b>✓ No conflicts</b> · ${nAgents} agent${nAgents > 1 ? 's' : ''} editing, none overlapping`;
+      okbanner.style.display = 'block';
+    } else { okbanner.style.display = 'none'; okbanner.innerHTML = ''; }
 
     if (grouping === 'turn' || grouping === 'session') {
       const titleMap = {}, latestBySession = {};

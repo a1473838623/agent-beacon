@@ -2,6 +2,11 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.8.6] — 2026-07-25
+
+### Changed
+- **The dashboard leads with conflict status, not a session count.** Beacon is a conflict detector (reads arent even tracked), so the empty state no longer says the misleading "No agents active." Instead: idle shows a large centered **"No conflicts"**; agents editing without overlap show a subtle **"No conflicts · N agents editing"** line at the bottom; a real overlap shows a prominent **"Conflict"** banner above the highlighted rows.
+
 ## [0.8.5] — 2026-07-25
 
 ### Fixed
