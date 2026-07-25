@@ -96,6 +96,7 @@ async function main() {
   // Stop event; the Stop hook clears it promptly. Build/deploy get a longer backstop.
   const conflicts = await report({
     actor, actorLabel, action, target, cwd,
+    promptId: input.prompt_id || '',
     detail: tool === 'Bash' ? String(ti.command || '').slice(0, 120) : '',
     ttlMs,
   });

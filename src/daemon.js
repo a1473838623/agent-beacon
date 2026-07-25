@@ -49,6 +49,11 @@ function readBody(req) {
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost');
 
+  if (req.method === 'POST' && u.pathname === '/title') {
+    const body = await readBody(req);
+    if (getSettings().grouping !== 'off') store.setTitle(body.sessionId, body.promptId, body.title);
+    return json(res, 200, { ok: true });
+  }
   if (req.method === 'POST' && u.pathname === '/report') {
     const body = await readBody(req);
     const result = store.report(body);
@@ -60,7 +65,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, result);
   }
   if (req.method === 'GET' && u.pathname === '/activity') {
-    return json(res, 200, { activities: store.list(u.searchParams.get('exclude')) });
+    return json(res, 200, { activities: store.list(u.searchParams.get('exclude')), titles: store.listTitles(), grouping: getSettings().grouping });
   }
   if (req.method === 'GET' && u.pathname === '/health') {
     return json(res, 200, { ok: true, version: pkg.version, count: store.list().length });
@@ -152,8 +157,9 @@ const server = http.createServer(async (req, res) => {
       'cache-control': 'no-cache',
       connection: 'keep-alive',
     });
-    res.write(`data: ${JSON.stringify(store.list())}\n\n`);
-    const off = store.onChange((snap) => res.write(`data: ${JSON.stringify(snap)}\n\n`));
+    const snapshot = () => JSON.stringify({ activities: store.list(), titles: store.listTitles(), grouping: getSettings().grouping });
+    res.write(`data: ${snapshot()}\n\n`);
+    const off = store.onChange(() => res.write(`data: ${snapshot()}\n\n`));
     const ping = setInterval(() => res.write(': ping\n\n'), 25000);
     req.on('close', () => { off(); clearInterval(ping); });
     return;

@@ -68,6 +68,10 @@
   .who { color: var(--text); }
   .chip { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11.5px;
           font-weight: 600; border: 1px solid var(--border); color: var(--text); }
+  .group { margin-bottom: 16px; }
+  .grouphead { display: flex; align-items: center; gap: 8px; margin: 0 2px 8px; }
+  .gtitle { font-weight: 600; font-size: 13.5px; }
+  .gtitle.muted { color: var(--muted); font-weight: 400; }
   .grow { flex: 1; min-width: 0; }
   .warntag { color: var(--warn); font-size: 12px; font-weight: 600; white-space: nowrap; }
   footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
@@ -109,6 +113,14 @@
     <div class="section">
       <label class="toggle"><input type="checkbox" id="setAutoCheck"> Auto-check for updates <span class="hint">(off by default · contacts GitHub only when enabled)</span></label>
       <label class="toggle"><input type="checkbox" id="setBoot"> Start Beacon on login <span class="hint" id="bootHint"></span></label>
+      <div class="toggle">Group edits:
+        <select id="setGroup">
+          <option value="off">Off — flat list</option>
+          <option value="session">By session</option>
+          <option value="turn">By conversation turn</option>
+        </select>
+        <span class="hint">session/turn stores your prompt's first line, locally</span>
+      </div>
     </div>
     <h3>Updates</h3>
     <div class="section">
@@ -155,32 +167,57 @@
     return 'b-working';
   }
 
-  function render(items) {
+  let conflictTargets = new Set();
+  const chip = (a) => { const c = colorFor(a.actor); return `<span class="chip" style="background:${c}22;border-color:${c}99">${escapeHtml((a.actorLabel || a.actor).slice(0, 8))}</span>`; };
+
+  function cardHtml(a, inGroup) {
+    const conflict = conflictTargets.has((a.target || '').toLowerCase());
+    const who = inGroup ? '' : chip(a) + ' · ';
+    return `<div class="card ${conflict ? 'conflict' : ''}">
+      <span class="badge ${badgeClass(a.action)}">${escapeHtml(a.action.replace('git:', 'git '))}</span>
+      <div class="grow">
+        <div class="target">${escapeHtml(shortTarget(a.target)) || '(working tree)'}</div>
+        <div class="meta">${who}${ago(a.startedAt)}${a.exclusive ? ' · exclusive' : ''}</div>
+      </div>
+      ${conflict ? '<span class="warntag">⚠ overlap</span>' : ''}
+      <button class="detailbtn" data-id="${a.id}">details</button>
+    </div>`;
+  }
+
+  function render(items, titles, grouping) {
+    items = (items || []).slice().sort((a, b) => b.heartbeat - a.heartbeat);
     countEl.textContent = items.length ? items.length + ' active' : '';
     emptyEl.style.display = items.length ? 'none' : 'block';
-
-    // Mark targets touched by 2+ distinct actors as conflicts.
-    const byTarget = {};
-    for (const a of items) {
-      const k = (a.target || '').toLowerCase();
-      (byTarget[k] = byTarget[k] || new Set()).add(a.actor);
-    }
-
-    items.sort((a, b) => b.heartbeat - a.heartbeat);
     lastItems = items;
-    listEl.innerHTML = items.map(a => {
-      const conflict = (byTarget[(a.target || '').toLowerCase()] || new Set()).size > 1;
-      const color = colorFor(a.actor);
-      return `<div class="card ${conflict ? 'conflict' : ''}">
-        <span class="badge ${badgeClass(a.action)}">${escapeHtml(a.action.replace('git:', 'git '))}</span>
-        <div class="grow">
-          <div class="target">${escapeHtml(shortTarget(a.target)) || '(working tree)'}</div>
-          <div class="meta"><span class="chip" style="background:${color}22;border-color:${color}99">${escapeHtml(a.actorLabel || a.actor)}</span> · ${ago(a.startedAt)}${a.exclusive ? ' · exclusive' : ''}</div>
-        </div>
-        ${conflict ? '<span class="warntag">⚠ overlap</span>' : ''}
-        <button class="detailbtn" data-id="${a.id}">details</button>
-      </div>`;
-    }).join('');
+
+    const byTarget = {};
+    for (const a of items) { const k = (a.target || '').toLowerCase(); (byTarget[k] = byTarget[k] || new Set()).add(a.actor); }
+    conflictTargets = new Set(Object.keys(byTarget).filter((k) => k && byTarget[k].size > 1));
+
+    if (grouping === 'turn' || grouping === 'session') {
+      const titleMap = {}, latestBySession = {};
+      (titles || []).forEach((t) => {
+        titleMap[t.sessionId + '::' + (t.promptId || '')] = t.title;
+        if (!latestBySession[t.sessionId] || (t.ts || 0) > latestBySession[t.sessionId].ts) latestBySession[t.sessionId] = { title: t.title, ts: t.ts || 0 };
+      });
+      const groups = new Map();
+      for (const a of items) {
+        const key = grouping === 'turn' ? a.actor + '::' + (a.promptId || '') : a.actor;
+        let g = groups.get(key);
+        if (!g) {
+          const title = grouping === 'turn' ? titleMap[a.actor + '::' + (a.promptId || '')] : (latestBySession[a.actor] || {}).title;
+          g = { a, title, items: [], last: 0 };
+          groups.set(key, g);
+        }
+        g.items.push(a); g.last = Math.max(g.last, a.heartbeat);
+      }
+      listEl.innerHTML = [...groups.values()].sort((x, y) => y.last - x.last).map((g) => {
+        const t = g.title ? `<span class="gtitle">${escapeHtml(g.title)}</span>` : '<span class="gtitle muted">(no title yet)</span>';
+        return `<div class="group"><div class="grouphead">${chip(g.a)} ${t}</div>${g.items.map((a) => cardHtml(a, true)).join('')}</div>`;
+      }).join('');
+    } else {
+      listEl.innerHTML = items.map((a) => cardHtml(a, false)).join('');
+    }
   }
 
   // Stable per-actor color so you can tell sessions apart at a glance.
@@ -200,7 +237,7 @@
   function setStatus(ok) { dot.classList.toggle('live', ok); dot.classList.toggle('down', !ok); }
   function connect() {
     const es = new EventSource('/events');
-    es.onmessage = (e) => { setStatus(true); try { render(JSON.parse(e.data)); } catch {} };
+    es.onmessage = (e) => { setStatus(true); try { const d = JSON.parse(e.data); render(d.activities, d.titles, d.grouping); } catch {} };
     es.onerror = () => { setStatus(false); };
   }
   connect();
@@ -209,7 +246,7 @@
   pollHealth();
   setInterval(pollHealth, 3000);
   setInterval(() => { // refresh relative timestamps
-    document.querySelectorAll('.card').length && fetch('/activity').then(r => r.json()).then(d => render(d.activities)).catch(() => {});
+    document.querySelectorAll('.card').length && fetch('/activity').then(r => r.json()).then(d => render(d.activities, d.titles, d.grouping)).catch(() => {});
   }, 5000);
 
   async function ctl(path) {
@@ -299,6 +336,7 @@
       return;
     }
     document.getElementById('setAutoCheck').checked = !!s.autoCheckUpdates;
+    document.getElementById('setGroup').value = s.grouping || 'off';
     setBoot.checked = !!s.startOnBoot;
     const supported = ['win32', 'linux', 'darwin'].includes(s.platform);
     bootHint.textContent = supported ? '' : '(not supported on ' + s.platform + ')';
@@ -330,6 +368,7 @@
   soverlay.onclick = (e) => { if (e.target === soverlay) closeSettings(); };
 
   document.getElementById('setAutoCheck').onchange = async (e) => { await postJSON('/settings', { autoCheckUpdates: e.target.checked }); toast('Setting saved.'); };
+  document.getElementById('setGroup').onchange = async (e) => { await postJSON('/settings', { grouping: e.target.value }); toast('Grouping: ' + e.target.options[e.target.selectedIndex].text); };
   document.getElementById('setBoot').onchange = async (e) => {
     const r = await postJSON('/settings', { startOnBoot: e.target.checked });
     if (r && r.autoStart && r.autoStart.ok === false) {

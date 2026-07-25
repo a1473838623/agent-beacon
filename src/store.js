@@ -21,6 +21,7 @@ function norm(t) {
 export class Store {
   constructor() {
     this.activities = new Map(); // id -> activity
+    this.titles = new Map();     // `${sessionId}::${promptId}` -> { sessionId, promptId, title, ts, ttlMs }
     this.listeners = new Set();  // change listeners (SSE)
     fs.mkdirSync(BEACON_HOME, { recursive: true });
     this._replay();
@@ -75,6 +76,7 @@ export class Store {
       detail: input.detail || '',
       exclusive: !!input.exclusive,
       cwd: input.cwd || '',
+      promptId: input.promptId || '',
       state: 'active',
       startedAt: existing ? existing.startedAt : now,
       heartbeat: now,
@@ -116,8 +118,31 @@ export class Store {
         n++;
       }
     }
+    for (const [k, t] of this.titles) if (!actor || t.sessionId === actor) this.titles.delete(k);
     if (n) this._emit();
     return n;
+  }
+
+  // Record the (truncated) title for a conversation turn. Grouping keys off (sessionId, promptId).
+  setTitle(sessionId, promptId, title, ttlMs) {
+    if (!sessionId || !title) return;
+    const key = `${sessionId}::${promptId || ''}`;
+    this.titles.set(key, { sessionId, promptId: promptId || '', title, ts: Date.now(), ttlMs: ttlMs || 30 * 60 * 1000 });
+    if (this.titles.size > 300) { // bound memory: drop the oldest
+      const oldest = [...this.titles.entries()].sort((a, b) => a[1].ts - b[1].ts)[0];
+      if (oldest) this.titles.delete(oldest[0]);
+    }
+    this._emit();
+  }
+
+  _reapTitles() {
+    const now = Date.now();
+    for (const [k, t] of this.titles) if (t.ts + t.ttlMs < now) this.titles.delete(k);
+  }
+
+  listTitles() {
+    this._reapTitles();
+    return [...this.titles.values()].map((t) => ({ sessionId: t.sessionId, promptId: t.promptId, title: t.title, ts: t.ts }));
   }
 
   list(exclude) {

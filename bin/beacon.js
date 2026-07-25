@@ -15,6 +15,7 @@ const BEACON_HOME = process.env.BEACON_HOME || path.join(os.homedir(), '.beacon'
 const DAEMON = path.join(ROOT, 'src', 'daemon.js');
 const HOOK = path.join(ROOT, 'hooks', 'pretooluse.js');
 const STOP = path.join(ROOT, 'hooks', 'stop.js');
+const PROMPT = path.join(ROOT, 'hooks', 'userprompt.js');
 const MCP = path.join(ROOT, 'mcp', 'server.js');
 
 async function fetchJson(pathn, opts, timeoutMs = 1500) {
@@ -163,7 +164,8 @@ function installClaudeHook(file) {
   const s = JSON.stringify(settings.hooks);
   const hasPre = s.includes('pretooluse.js');
   const hasStop = s.includes('stop.js');
-  if (hasPre && hasStop) return 'present';
+  const hasPrompt = s.includes('userprompt.js');
+  if (hasPre && hasStop && hasPrompt) return 'present';
   if (!hasPre) {
     settings.hooks.PreToolUse = settings.hooks.PreToolUse || [];
     settings.hooks.PreToolUse.push({ matcher: 'Edit|Write|MultiEdit|Bash', hooks: [{ type: 'command', command: `node "${HOOK}"` }] });
@@ -171,6 +173,10 @@ function installClaudeHook(file) {
   if (!hasStop) { // added in a later version — upgrade older installs too
     settings.hooks.Stop = settings.hooks.Stop || [];
     settings.hooks.Stop.push({ hooks: [{ type: 'command', command: `node "${STOP}"` }] });
+  }
+  if (!hasPrompt) {
+    settings.hooks.UserPromptSubmit = settings.hooks.UserPromptSubmit || [];
+    settings.hooks.UserPromptSubmit.push({ hooks: [{ type: 'command', command: `node "${PROMPT}"` }] });
   }
   fs.writeFileSync(file, JSON.stringify(settings, null, 2));
   return hasPre ? 'upgraded' : 'added';
@@ -182,10 +188,10 @@ function removeClaudeHook(file) {
   let s; try { s = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return false; }
   if (!s.hooks) return false;
   let changed = false;
-  for (const key of ['PreToolUse', 'Stop']) {
+  for (const key of ['PreToolUse', 'Stop', 'UserPromptSubmit']) {
     if (!Array.isArray(s.hooks[key])) continue;
     const before = s.hooks[key].length;
-    s.hooks[key] = s.hooks[key].filter((e) => !(e.hooks || []).some((h) => typeof h.command === 'string' && /pretooluse\.js|stop\.js/.test(h.command)));
+    s.hooks[key] = s.hooks[key].filter((e) => !(e.hooks || []).some((h) => typeof h.command === 'string' && /pretooluse\.js|stop\.js|userprompt\.js/.test(h.command)));
     if (s.hooks[key].length !== before) changed = true;
     if (s.hooks[key].length === 0) delete s.hooks[key];
   }

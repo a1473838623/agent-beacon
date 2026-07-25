@@ -2,6 +2,14 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## [0.8.0] — 2026-07-23
+
+### Added
+- **Group edits by session or conversation turn** (Settings → *Group edits*: Off / By session / By turn). A new `UserPromptSubmit` hook captures the first line of your prompt as a group title, and the dashboard groups a session's edits either all together (**session**) or per turn (**turn**). Beacon correctly ties multiple turns to one session via `session_id` + `prompt_id`.
+  - **Opt-in, off by default** — it stores prompt text (more sensitive than paths), though everything stays 100% local. Images/attachments/huge pastes fall back to a generic label (`(image / attachment)`), and titles are truncated to ~72 chars.
+  - `beacon init` now installs the `UserPromptSubmit` hook too, and upgrades older installs in place.
+- Activities now carry `promptId`; `/activity` and the SSE stream include `titles` and the current `grouping` mode; new `POST /title` endpoint (setting-gated).
+
 ## [0.7.3] — 2026-07-23
 
 ### Fixed
