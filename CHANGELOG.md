@@ -2,6 +2,34 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## 0.10.6
+
+- **Retracts 0.10.5. Beacon's hooks do fire in Codex.** 0.10.5 concluded they did not, on
+  the strength of an empty daemon log and the absence of any `type: "command"` hook in
+  OpenAI's bundled plugins. Both observations were real; the conclusion drawn from them was
+  wrong.
+
+  The activity log settles it. A live Codex session produced the matching pair:
+
+  ```
+  active | editing | ...\Codex6-09-03\co\work\codex-cli-hook-trigger.txt | 01a06616
+  done   | editing | (same file)                                                | 01a06616
+  ```
+
+  `PreToolUse` reported the file the `apply_patch` was about to create, and `Stop` cleared
+  it when the turn ended. `${PLUGIN_ROOT}` does expand in a hook command, and the payload is
+  exactly the patch envelope `src/patch.js` parses.
+
+- **Documents the two things that make working hooks look broken**, because both fooled this
+  project into shipping a wrong conclusion:
+
+  - **A running Codex session does not pick up newly installed hooks.** Every earlier test
+    edited in a session started before the install, which looks identical to hooks not
+    working. Restart Codex after installing.
+  - **The Hooks settings page does not list plugin hooks.** It reports "no hooks found"
+    while they are installed and firing — the hooks OpenAI's own bundled plugins declare
+    don't appear there either. `beacon status` is the honest check.
+
 ## 0.10.5
 
 - **Corrected the README: Beacon's hooks do not fire in Codex.** 0.10.0 claimed parity with
