@@ -156,7 +156,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && u.pathname === '/update/apply') {
     if (!sameOrigin(req)) return json(res, 403, { error: 'forbidden' });
     const root = path.join(__dirname, '..');
-    if (!fs.existsSync(path.join(root, '.git'))) return json(res, 200, { ok: false, message: 'Not a git checkout — update with `npm i -g agent-beacon` or re-pull your install.' });
+    if (!fs.existsSync(path.join(root, '.git'))) return json(res, 200, { ok: false, message: 'Not a git checkout — update with `npm i -g beacon-agents` or re-pull your install.' });
     execFile('git', ['-C', root, 'pull', '--ff-only'], { timeout: 30000, windowsHide: true }, (err, stdout, stderr) => {
       if (err) { log('warn', 'daemon', 'update pull failed: ' + ((stderr || err.message) || '')); return json(res, 200, { ok: false, message: ((stderr || err.message) || 'git pull failed').trim() }); }
       log('info', 'daemon', 'update pulled, restarting to apply');

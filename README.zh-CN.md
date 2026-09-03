@@ -66,11 +66,16 @@ irm https://raw.githubusercontent.com/a1473838623/agent-beacon/main/install.ps1 
 
 ```bash
 git clone https://github.com/a1473838623/agent-beacon.git && cd agent-beacon
-npm link            # 把 `beacon` 命令装到 PATH 上(或:npm i -g agent-beacon)
+npm link            # 把 `beacon` 命令装到 PATH 上(或:npm i -g beacon-agents)
 beacon init         # 默认全局 —— 本机所有项目都覆盖
 beacon start -d     # 后台启动本地守护进程
 open http://127.0.0.1:4517
 ```
+
+> **npm 包名是 `beacon-agents`,不是 `agent-beacon`。** npm 会去掉标点后比较包名,
+> 而 `agent-beacon` 规范化后与一个无关的、仍在活跃维护的包 `agentbeacon` 完全撞名。
+> 仓库名、Claude Code 插件名、marketplace 名和 `beacon` 命令都不受影响 ——
+> 只有 `npm install` 用的是这个不同的名字。
 
 > Windows 上 `npm i -g` 会写进 Node 的全局目录,而无论是官方安装包还是 nvm,那个目录都在
 > `C:\Program Files` 下,不提权就会失败。`install.ps1` 改为装到 `%LOCALAPPDATA%`,

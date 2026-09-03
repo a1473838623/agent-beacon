@@ -69,11 +69,16 @@ irm https://raw.githubusercontent.com/a1473838623/agent-beacon/main/install.ps1 
 
 ```bash
 git clone https://github.com/a1473838623/agent-beacon.git && cd agent-beacon
-npm link            # puts the `beacon` command on your PATH  (or: npm i -g agent-beacon)
+npm link            # puts the `beacon` command on your PATH  (or: npm i -g beacon-agents)
 beacon init         # GLOBAL by default — every project on this machine is covered
 beacon start -d     # start the local daemon (background)
 open http://127.0.0.1:4517
 ```
+
+> **The npm package is `beacon-agents`, not `agent-beacon`.** npm normalizes package names by
+> stripping punctuation, which collides with an unrelated, actively maintained package called
+> `agentbeacon`. The repository, the Claude Code plugin, the marketplace and the `beacon`
+> command are all unaffected — only `npm install` takes the different name.
 
 > On Windows, `npm i -g` writes into Node's global prefix, which sits under
 > `C:\Program Files` for installer- and nvm-based setups and fails without elevation.

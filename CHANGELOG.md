@@ -29,6 +29,10 @@ server together, shows up under `/plugin` and `/mcp`, and needs no `beacon init`
   for anyone who installed from npm rather than a git clone.
 - `npm version` now syncs the plugin manifests via `scripts/sync-version.js`, so plugin
   users actually receive updates.
+- **The npm package is published as `beacon-agents`.** npm normalizes names by stripping
+  punctuation, so `agent-beacon` collides with an unrelated, actively maintained package
+  called `agentbeacon` and is refused. The repository, the plugin, the marketplace and the
+  `beacon` command keep their names; only `npm install` differs.
 
 
 ## [0.8.7] — 2026-07-25
