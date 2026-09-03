@@ -57,19 +57,26 @@ Beacon 是一个极小的本地服务,给每个 agent 一张共享的、实时�
 
 ### CLI —— 要 `beacon` 命令、看板,或者接非 Claude Code 的 agent
 
-**Windows**(不需要管理员权限):
+一条命令,全平台通用:
+
+```bash
+npm i -g beacon-agents
+```
+
+然后:
+
+```bash
+beacon init         # 默认全局 —— 本机所有项目都覆盖
+beacon start -d     # 后台启动本地守护进程
+open http://127.0.0.1:4517
+```
+
+**Windows 注意:** `npm i -g` 会写进 Node 的全局目录,而无论官方安装包还是 nvm,
+那个目录都在 `C:\Program Files` 下 —— 不以管理员身份运行就会 `EPERM` 失败。
+遇到这种情况改用安装脚本,它不需要提权:装到 `%LOCALAPPDATA%`,并把 shim 放进用户 PATH。
 
 ```powershell
 irm https://raw.githubusercontent.com/a1473838623/agent-beacon/main/install.ps1 | iex
-```
-
-**macOS / Linux:**
-
-```bash
-npm i -g beacon-agents   # 装上 `beacon` 命令;需要 Node ≥ 18,零依赖
-beacon init              # 默认全局 —— 本机所有项目都覆盖
-beacon start -d          # 后台启动本地守护进程
-open http://127.0.0.1:4517
 ```
 
 要改 Beacon 本身?那就 clone 下来 `npm link`:
@@ -78,14 +85,10 @@ open http://127.0.0.1:4517
 git clone https://github.com/a1473838623/agent-beacon.git && cd agent-beacon && npm link
 ```
 
-> **npm 包名是 [`beacon-agents`](https://www.npmjs.com/package/beacon-agents),不是 `agent-beacon`。** npm 会去掉标点后比较包名,
-> 而 `agent-beacon` 规范化后与一个无关的、仍在活跃维护的包 `agentbeacon` 完全撞名。
-> 仓库名、Claude Code 插件名、marketplace 名和 `beacon` 命令都不受影响 ——
-> 只有 `npm install` 用的是这个不同的名字。
-
-> Windows 上 `npm i -g` 会写进 Node 的全局目录,而无论是官方安装包还是 nvm,那个目录都在
-> `C:\Program Files` 下,不提权就会失败。`install.ps1` 改为装到 `%LOCALAPPDATA%`,
-> 并把 shim 放进用户 PATH。
+> **npm 包名是 [`beacon-agents`](https://www.npmjs.com/package/beacon-agents),不是 `agent-beacon`。**
+> npm 会去掉标点后比较包名,而 `agent-beacon` 规范化后与一个无关的、仍在活跃维护的包
+> `agentbeacon` 完全撞名。仓库名、Claude Code 插件名、marketplace 名和 `beacon` 命令都不受影响
+> —— 只有 `npm install` 用的是这个不同的名字。
 
 **本机新开的每个 Claude Code 会话现在都会自动上报活动** —— 无需每个项目单独配、无需每个会话手动操作,也没有需要记住的提示词。
 

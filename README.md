@@ -60,19 +60,27 @@ and `/mcp`, and you can disable it from there without editing any config file.
 
 ### CLI — for the `beacon` command, the dashboard, and non-Claude-Code agents
 
-**Windows** (no Administrator rights needed):
+One command, any platform:
+
+```bash
+npm i -g beacon-agents
+```
+
+Then:
+
+```bash
+beacon init         # GLOBAL by default — every project on this machine is covered
+beacon start -d     # start the local daemon (background)
+open http://127.0.0.1:4517
+```
+
+**Windows:** `npm i -g` writes into Node's global prefix, which sits under
+`C:\Program Files` for installer- and nvm-based setups — so it fails with `EPERM`
+unless you run as Administrator. If that happens, use the installer instead. It needs no
+elevation: it installs under `%LOCALAPPDATA%` and puts a shim on your user PATH.
 
 ```powershell
 irm https://raw.githubusercontent.com/a1473838623/agent-beacon/main/install.ps1 | iex
-```
-
-**macOS / Linux:**
-
-```bash
-npm i -g beacon-agents   # the `beacon` command; Node ≥ 18, zero dependencies
-beacon init              # GLOBAL by default — every project on this machine is covered
-beacon start -d          # start the local daemon (background)
-open http://127.0.0.1:4517
 ```
 
 Working on Beacon itself? Clone and `npm link` instead:
@@ -86,10 +94,6 @@ git clone https://github.com/a1473838623/agent-beacon.git && cd agent-beacon && 
 > an unrelated, actively maintained package called `agentbeacon`. The repository, the Claude
 > Code plugin, the marketplace and the `beacon` command are all unaffected — only
 > `npm install` takes the different name.
-
-> On Windows, `npm i -g` writes into Node's global prefix, which sits under
-> `C:\Program Files` for installer- and nvm-based setups and fails without elevation.
-> `install.ps1` installs under `%LOCALAPPDATA%` and puts a shim on your user PATH instead.
 
 **Every new Claude Code session on this machine now reports activity automatically** — no
 per-project steps, no per-session steps, no prompts to remember.
