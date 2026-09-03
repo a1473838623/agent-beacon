@@ -2,6 +2,14 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## 0.10.3
+
+- **npm publishes from the release too.** A tag now produces the GitHub release and the npm
+  version together, so the two can't disagree about what a version contains. The job runs
+  after the release job — a published npm version can never be replaced, a GitHub release
+  can — and it skips silently if the `NPM_TOKEN` secret isn't set, or if that version is
+  already on npm, so re-running a release is safe.
+
 ## 0.10.2
 
 - **Fixed: the Codex MCP server never started.** Codex does not expand

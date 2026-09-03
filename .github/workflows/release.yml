@@ -66,3 +66,34 @@ jobs:
             --title "${{ steps.v.outputs.tag }}" \
             --notes-file NOTES.md \
             beacon-plugin.zip
+
+  # npm and the GitHub release should never disagree about what 0.x.y contains, so the same
+  # tag publishes both. Runs after the release so a failed build can't leave npm ahead —
+  # an npm version cannot be replaced once published, a GitHub release can.
+  npm:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "NPM_TOKEN secret is not set — skipping npm publish." >&2
+            exit 0
+          fi
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "beacon-agents@$VERSION" version >/dev/null 2>&1; then
+            echo "beacon-agents@$VERSION is already published — nothing to do."
+            exit 0
+          fi
+          npm publish --access public
