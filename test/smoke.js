@@ -128,4 +128,27 @@ for (const event of Object.keys(claudeHooks)) {
     `hook "${event}" differs between the Claude and Codex manifests`);
 }
 
+// ---- shipped text must not contain stray control characters ----
+// A release's notes are cut from CHANGELOG.md by CI, so a control byte that sneaks into the
+// file is published as mojibake and cannot be edited out of the release afterwards. They
+// arrive from escaping accidents while editing (a literal \2026 in a path becoming \x82),
+// are invisible in most editors, and survive review — so check for them instead.
+const TEXT_FILES = ['CHANGELOG.md', 'README.md', 'README.zh-CN.md', 'PRIVACY.md'];
+
+// 19. no C0 control characters other than tab and newline
+for (const name of TEXT_FILES) {
+  const text = fs.readFileSync(new URL('../' + name, import.meta.url), 'utf8');
+  const bad = [];
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    // C0 (minus tab/newline/CR), DEL, the C1 block, and the replacement character.
+    // The bug that prompted this was U+0082, a C1 control — outside C0, and invisible.
+    if ((c < 0x20 && c !== 0x09 && c !== 0x0a && c !== 0x0d)
+        || c === 0x7f || (c >= 0x80 && c <= 0x9f) || c === 0xfffd) {
+      bad.push(`${name}:${text.slice(0, i).split('\n').length} U+${c.toString(16).padStart(4, '0')}`);
+    }
+  }
+  assert.deepEqual(bad, [], `control characters in shipped text: ${bad.join(', ')}`);
+}
+
 console.log('✓ all smoke tests passed');
