@@ -12,8 +12,8 @@ All notable changes to Beacon are documented here. Format follows [Keep a Change
   The activity log settles it. A live Codex session produced the matching pair:
 
   ```
-  active | editing | ...\Codex6-09-03\co\work\codex-cli-hook-trigger.txt | 01a06616
-  done   | editing | (same file)                                                | 01a06616
+  active | editing | ...\co\work\codex-cli-hook-trigger.txt | 01a06616
+  done   | editing | (same file)                            | 01a06616
   ```
 
   `PreToolUse` reported the file the `apply_patch` was about to create, and `Stop` cleared
