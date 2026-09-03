@@ -179,6 +179,21 @@ beacon start -d
 
 (Global by default; `beacon init --codex --project` scopes it to `.codex/config.toml`, and switching levels disables the other — same as the Claude hook.)
 
+That command comes from the CLI. **If you installed Beacon as a Claude Code plugin only,
+you do not have a `beacon` command** — write the entry yourself instead. This needs no
+install at all:
+
+```toml
+# ~/.codex/config.toml
+[mcp_servers.beacon]
+command = "npx"
+args = ["-y", "beacon-agents", "mcp"]
+```
+
+Either way, Codex reports to the same local daemon your Claude Code sessions use, so the
+two see each other. Installing Beacon as a plugin does not make it Claude-Code-only: the
+daemon is the bus, and the plugin just changes how the Claude Code side is wired to it.
+
 Optionally add one line to your `AGENTS.md` so Codex uses it proactively:
 
 > Before editing a file or running a risky command, call the `beacon` `get_activity` / `report_activity` tools to avoid colliding with other agents.

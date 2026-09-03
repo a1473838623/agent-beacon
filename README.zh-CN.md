@@ -167,6 +167,20 @@ beacon start -d
 
 (默认全局;`beacon init --codex --project` 作用于 `.codex/config.toml`,切换级别时自动关闭另一个 —— 和 Claude hook 一致。)
 
+这条命令属于 CLI。**如果你只装了 Claude Code 插件,机器上是没有 `beacon` 命令的** ——
+那就自己写配置。下面这种写法完全不需要安装任何东西:
+
+```toml
+# ~/.codex/config.toml
+[mcp_servers.beacon]
+command = "npx"
+args = ["-y", "beacon-agents", "mcp"]
+```
+
+两种接法效果一样:Codex 上报到的是你 Claude Code 会话正在用的同一个本地守护进程,
+所以双方互相可见。**把 Beacon 装成插件并不会让它变成 Claude Code 专属** ——
+守护进程才是总线,插件只是改变了 Claude Code 这一侧的接线方式。
+
 可选:在你的 `AGENTS.md` 里加一行,让 Codex 主动使用:
 
 > 在编辑文件或运行有风险的命令前,先调用 `beacon` 的 `get_activity` / `report_activity` 工具,避免和其他 agent 撞车。
