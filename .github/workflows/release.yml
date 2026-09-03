@@ -58,14 +58,20 @@ jobs:
       - name: Release notes from CHANGELOG
         run: node scripts/changelog-section.js "${{ steps.v.outputs.version }}" > NOTES.md
 
+      # Create or update, so a release can be re-run. Notes are cut from CHANGELOG.md at
+      # tag time; a mistake spotted afterwards would otherwise be frozen into the published
+      # release, because re-running a create against an existing tag just fails.
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ steps.v.outputs.tag }}" \
-            --title "${{ steps.v.outputs.tag }}" \
-            --notes-file NOTES.md \
-            beacon-plugin.zip
+          TAG="${{ steps.v.outputs.tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TAG" --notes-file NOTES.md
+            gh release upload "$TAG" beacon-plugin.zip --clobber
+          else
+            gh release create "$TAG" --title "$TAG" --notes-file NOTES.md beacon-plugin.zip
+          fi
 
   # npm and the GitHub release should never disagree about what 0.x.y contains, so the same
   # tag publishes both. Runs after the release so a failed build can't leave npm ahead —
