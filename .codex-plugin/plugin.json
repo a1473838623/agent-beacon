@@ -1,0 +1,29 @@
+{
+  "name": "beacon",
+  "version": "0.10.0",
+  "description": "Real-time presence and collision-avoidance for parallel AI coding agents. Warns you before two agents edit the same file, or before a git checkout/reset/stash yanks the working tree out from under another agent. Sees Claude Code, Codex and any MCP client on one shared local bus.",
+  "author": {
+    "name": "Beacon contributors"
+  },
+  "homepage": "https://github.com/a1473838623/agent-beacon",
+  "repository": "https://github.com/a1473838623/agent-beacon",
+  "license": "MIT",
+  "keywords": [
+    "agents",
+    "parallel",
+    "collision-avoidance",
+    "presence",
+    "hooks",
+    "mcp"
+  ],
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Beacon",
+    "shortDescription": "Stop two AI agents from clobbering the same file",
+    "developerName": "Beacon contributors",
+    "category": "Developer Tools",
+    "websiteURL": "https://github.com/a1473838623/agent-beacon",
+    "privacyPolicyURL": "https://github.com/a1473838623/agent-beacon/blob/main/PRIVACY.md"
+  }
+}

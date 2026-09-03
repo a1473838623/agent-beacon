@@ -11,6 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { log } from '../src/log.js';
 import { claimEvent } from '../src/dedupe.js';
+import { filesFromPatch } from '../src/patch.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.BEACON_PORT) || 4517;
@@ -80,32 +81,49 @@ async function main() {
   const actorLabel = (input.session_id || 'session').slice(0, 8);
   const cwd = input.cwd || process.cwd();
 
-  let category = 'edit', action, target, ttlMs = 180000;
+  // A tool call can touch more than one file (Codex's apply_patch carries a whole patch),
+  // so targets is a list even though the common case has exactly one entry.
+  let category = 'edit', action, targets, ttlMs = 180000;
   if (tool === 'Edit' || tool === 'Write' || tool === 'MultiEdit') {
     if (!ti.file_path) return allow();
     action = 'editing';
-    target = ti.file_path;
+    targets = [ti.file_path];
+  } else if (tool === 'apply_patch') {
+    targets = filesFromPatch(String(ti.command || ti.patch || ''), cwd);
+    if (!targets.length) return allow();
+    action = 'editing';
   } else if (tool === 'Bash') {
     const c = classifyBash(String(ti.command || ''));
     if (!c) return allow();
     category = c.category; action = c.action; ttlMs = c.ttlMs;
     // Build/deploy get their own target namespace so they conflict only with other
     // builds/deploys in the same dir — not with git ops (which target the raw cwd).
-    target = (c.category === 'build' || c.category === 'deploy') ? `job://${cwd}` : cwd;
+    targets = [(c.category === 'build' || c.category === 'deploy') ? `job://${cwd}` : cwd];
   } else {
     return allow();
   }
 
   // Edit presence is momentary — short TTL so it fades if the session goes idle without a
   // Stop event; the Stop hook clears it promptly. Build/deploy get a longer backstop.
-  const conflicts = await report({
+  const detail = tool === 'Bash' ? String(ti.command || '').slice(0, 120) : '';
+  const results = await Promise.all(targets.map((target) => report({
     actor, actorLabel, action, target, cwd,
     promptId: input.prompt_id || '',
-    detail: tool === 'Bash' ? String(ti.command || '').slice(0, 120) : '',
+    detail,
     ttlMs,
+  })));
+
+  // A null result means the daemon was unreachable — fail open rather than warn on partial data.
+  if (results.some((r) => r === null)) return allow();
+  // Two files in one patch can collide with the same agent; don't say its name twice.
+  const seen = new Set();
+  const conflicts = results.flat().filter((c) => {
+    const k = `${c.actor}|${c.action}|${c.target}`;
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
   });
 
-  if (!conflicts || conflicts.length === 0) return allow();
+  if (conflicts.length === 0) return allow();
 
   const who = conflicts.map((c) => `${c.actorLabel || c.actor} (${c.action} ${shortTarget(c.target)})`).join('; ');
   let msg;

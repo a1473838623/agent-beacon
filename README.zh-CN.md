@@ -55,6 +55,15 @@ Beacon 是一个极小的本地服务,给每个 agent 一张共享的、实时�
 
 配置到此为止。插件同时带上 hook **和** MCP 服务器,守护进程会在第一次编辑时自行拉起 —— 不需要再跑任何命令。Beacon 会出现在 `/plugin` 和 `/mcp` 里,想关掉直接在那里关,不用改任何配置文件。
 
+### Codex —— 装插件
+
+```bash
+codex plugin marketplace add a1473838623/agent-beacon
+```
+
+然后在 `codex /plugins` 里安装 `beacon`,再跑 `/hooks` 信任它的 hook。
+和 Claude Code 插件是同一套 hook、同一个 MCP 服务器、同一个守护进程。
+
 ### CLI —— 要 `beacon` 命令、看板,或者接非 Claude Code 的 agent
 
 一条命令,全平台通用:
@@ -146,7 +155,7 @@ Beacon **并不锁定在 Claude Code 上**。内核是一条语言无关的本�
 | 参与方 | 如何上报 | 能收到上下文内警告吗? |
 |---|---|---|
 | **Claude Code** | 装插件(或 `beacon init`)—— 自动、零配置 | ✅ 能,在编辑前注入 |
-| **Codex** | `beacon init --codex`(MCP 服务器)+ 在 `AGENTS.md` 加一行 | ➖ 能查询和上报;由模型自行决定如何反应 |
+| **Codex** | 装插件(hook + MCP),或 `beacon init --codex` 只接 MCP | ✅ 装插件后能,在编辑前注入 |
 | **任意 MCP agent** *(Cursor、Cline、Windsurf、Zed、Claude Agent SDK)* | 把它的 MCP 配置指向 `beacon mcp` —— `report_activity` / `get_activity` 工具 | ➖ 能查询和上报 |
 | **git / docker / CI 脚本** | `with_report <action> <target> -- <cmd>` | — |
 | **任意编辑器或人** | `beacon watch <dir>`(文件系统监听) | — |
@@ -167,8 +176,19 @@ beacon start -d
 
 (默认全局;`beacon init --codex --project` 作用于 `.codex/config.toml`,切换级别时自动关闭另一个 —— 和 Claude hook 一致。)
 
-这条命令属于 CLI。**如果你只装了 Claude Code 插件,机器上是没有 `beacon` 命令的** ——
-那就自己写配置。下面这种写法完全不需要安装任何东西:
+**Codex —— 装插件(推荐):**
+
+```bash
+codex plugin marketplace add a1473838623/agent-beacon
+```
+
+然后在插件浏览器里安装 `beacon`(`codex /plugins`)。插件同时带上 hook **和** MCP 服务器,
+和 Claude Code 那个插件是同一个仓库、同一个守护进程。
+
+> Codex 不会自动信任插件里的 hook。装完之后跑 `/hooks`,审阅并信任 Beacon 的三个 hook,
+> 否则 hook 不会执行(MCP 工具不受影响,两种情况下都能用)。
+
+**或者只接 MCP 服务器**,完全不需要安装任何东西:
 
 ```toml
 # ~/.codex/config.toml
@@ -177,9 +197,10 @@ command = "npx"
 args = ["-y", "beacon-agents", "mcp"]
 ```
 
-两种接法效果一样:Codex 上报到的是你 Claude Code 会话正在用的同一个本地守护进程,
-所以双方互相可见。**把 Beacon 装成插件并不会让它变成 Claude Code 专属** ——
-守护进程才是总线,插件只是改变了 Claude Code 这一侧的接线方式。
+**或者用 CLI**(前提是 `beacon` 已在 PATH 上):`beacon init --codex`。
+
+三种接法连的都是同一个本地守护进程,所以和 Claude Code 会话互相可见。
+**把 Beacon 装成插件并不会让它变成 Claude Code 专属** —— 守护进程才是总线。
 
 可选:在你的 `AGENTS.md` 里加一行,让 Codex 主动使用:
 
@@ -187,14 +208,24 @@ args = ["-y", "beacon-agents", "mcp"]
 
 **Cursor / Cline / Windsurf / Zed / Claude Agent SDK:** 把该客户端的 MCP 配置指向本服务器。免安装写法:`command: npx`,`args: ["-y", "beacon-agents", "mcp"]`。若 `beacon` 已在 PATH 上,用 `beacon mcp` 也可以。
 
-**Codex 目前能得到什么 —— 说清楚,别有预期落差:**
+**装了插件之后,Codex 能得到什么:**
 
-- ✅ **对其他所有 agent 可见。** Codex 的活动会出现在面板上、以及别人的警告里 —— 走 MCP 工具,或者用 `beacon watch` 时*零* Codex 配置就可见。
-- ✅ **能自己查冲突。** Codex 可以调用 `get_activity` / `report_activity` —— 但只有你加了上面那行 `AGENTS.md` 指令,它才会主动调(否则工具可用,但模型不会自发去用)。
-- ❌ **Codex *内部*没有"编辑前自动警告"。** 和 Claude Code 不同,Codex 无法在编辑前被注入警告:它的 hook 只在 Bash 上触发(不含文件写入),也无法注入上下文。这是 Codex 平台的限制,不是 Beacon 的。
-- 🔜 **冲突时硬阻断破坏性 git** —— 规划中,靠一个 Codex Bash hook(Codex 的 hook *能* deny)。见[路线图](#路线图)。
+- ✅ **编辑前被自动警告。** Codex 的 `PreToolUse` 对**文件编辑**也触发(不只是 shell),
+  而且接受和 Claude Code 相同的 `additionalContext` 输出。同一行重叠警告会被注入
+  Codex 自己的上下文。
+- ✅ **同样守着破坏性 git**、`git add -A` / `commit -a`、以及重复的构建/部署。
+- ✅ **回合结束时清除自己的存在**(靠 `Stop` hook),面板上不会留下过期条目。
+- ✅ **对其他所有 agent 可见**,出现在面板和别人的警告里。
 
-一句话:**Claude Code = 全自动、每次编辑前被警告;Codex = 对所有人可见 + 可按需查询,但不会被自动警告。**
+一个实现细节:Codex 把文件编辑表达为 `apply_patch`,给 hook 的是
+`tool_input.command` 里的整块补丁而不是路径,而且一次调用可能改好几个文件。
+Beacon 会解析补丁信封并逐个文件上报,所以其中任何一个撞车都能被抓到(`src/patch.js`)。
+
+**不装插件**(只接 MCP)时,Codex 依然对所有人可见、也能调
+`get_activity` / `report_activity`,但不会有任何东西被自动注入 —— 得靠模型自己想起来问。
+
+> 这一节以前写的是「Codex 无法在编辑前被注入警告」。那对更早版本的 Codex 是成立的 ——
+> 那时它的 hook 只在 Bash 上触发、也不能注入上下文。现在已经不是这样了。
 
 ---
 
@@ -257,7 +288,7 @@ BEACON_LOG_LEVEL=debug beacon start   # 记录每一次上报和工具调用
 ## 路线图
 
 - [x] 原生 **MCP 服务器**(`report_activity` / `get_activity`)—— 支持 Codex、Cursor、Cline、Windsurf、Zed 和 Claude Agent SDK
-- [ ] `beacon init --codex` 同时装一个 Codex Bash hook,在冲突时硬阻断破坏性 git 操作
+- [x] **Codex 插件** —— hook + MCP 服务器,每次编辑前被警告,与 Claude Code 对等(0.10.0)
 - [ ] `SessionStart` hook:每个新会话启动时,先打个招呼、汇总同伴们正在做什么
 - [ ] 对真正需要串行的资源提供可选的硬**租约**(比如一次只允许一个构建)
 - [ ] 重叠时的 Slack / 桌面通知

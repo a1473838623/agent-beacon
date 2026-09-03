@@ -1,6 +1,6 @@
 {
   "name": "beacon-agents",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Real-time presence and collision-avoidance for parallel AI coding agents. See what every Claude Code / MCP / CLI agent is touching — and never let two agents clobber the same file again.",
   "type": "module",
   "bin": {
@@ -12,7 +12,7 @@
   "scripts": {
     "start": "node src/daemon.js",
     "test": "node test/smoke.js",
-    "version": "node scripts/sync-version.js && git add .claude-plugin"
+    "version": "node scripts/sync-version.js && git add .claude-plugin .codex-plugin"
   },
   "engines": {
     "node": ">=18"
@@ -25,7 +25,9 @@
     "examples",
     "mcp",
     ".claude-plugin",
-    ".mcp.json"
+    ".mcp.json",
+    ".codex-plugin",
+    ".agents"
   ],
   "keywords": [
     "claude-code",

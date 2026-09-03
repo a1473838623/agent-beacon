@@ -58,6 +58,15 @@ That is the whole setup. The plugin brings the hooks *and* the MCP server, and t
 lazy-starts itself on the first edit — nothing else to run. Beacon shows up under `/plugin`
 and `/mcp`, and you can disable it from there without editing any config file.
 
+### Codex — install the plugin
+
+```bash
+codex plugin marketplace add a1473838623/agent-beacon
+```
+
+Then install `beacon` from `codex /plugins`, and run `/hooks` to trust its hooks.
+Same hooks, same MCP server, same daemon as the Claude Code plugin.
+
 ### CLI — for the `beacon` command, the dashboard, and non-Claude-Code agents
 
 One command, any platform:
@@ -158,7 +167,7 @@ Beacon is **not locked to Claude Code**. The core is a language-agnostic local H
 | Actor | How it reports | Gets in-context warnings? |
 |---|---|---|
 | **Claude Code** | plugin install (or `beacon init`) — automatic, zero-config | ✅ yes, injected before the edit |
-| **Codex** | `beacon init --codex` (MCP server) + one line in `AGENTS.md` | ➖ can query & report; the model decides how to act |
+| **Codex** | plugin install (hooks + MCP), or `beacon init --codex` for MCP only | ✅ yes with the plugin, injected before the edit |
 | **Any MCP agent** *(Cursor, Cline, Windsurf, Zed, Claude Agent SDK)* | point its MCP config at `beacon mcp` — `report_activity` / `get_activity` tools | ➖ can query & report |
 | **git / docker / CI scripts** | `with_report <action> <target> -- <cmd>` | — |
 | **Any editor or human** | `beacon watch <dir>` (file-system watcher) | — |
@@ -170,18 +179,20 @@ Claude Code gets the richest experience because its hooks let Beacon both auto-r
 
 Beacon ships a zero-dependency **MCP server**, so any MCP-capable agent can report and query activity on the same bus your Claude Code sessions use.
 
-**Codex:**
+**Codex — install the plugin (recommended):**
 
 ```bash
-beacon init --codex      # adds [mcp_servers.beacon] to ~/.codex/config.toml (global)
-beacon start -d
+codex plugin marketplace add a1473838623/agent-beacon
 ```
 
-(Global by default; `beacon init --codex --project` scopes it to `.codex/config.toml`, and switching levels disables the other — same as the Claude hook.)
+Then install `beacon` from the plugin browser (`codex /plugins`). The plugin brings the
+hooks *and* the MCP server, exactly like the Claude Code one — same repo, same daemon.
 
-That command comes from the CLI. **If you installed Beacon as a Claude Code plugin only,
-you do not have a `beacon` command** — write the entry yourself instead. This needs no
-install at all:
+> Codex does not trust plugin hooks automatically. After installing, run `/hooks`, review
+> Beacon's three hook definitions and trust them, or the hooks stay inert. (The MCP tools
+> work either way.)
+
+**Or wire just the MCP server**, with no install at all:
 
 ```toml
 # ~/.codex/config.toml
@@ -189,6 +200,14 @@ install at all:
 command = "npx"
 args = ["-y", "beacon-agents", "mcp"]
 ```
+
+**Or from the CLI**, if you have `beacon` on your PATH:
+
+```bash
+beacon init --codex      # adds [mcp_servers.beacon] to ~/.codex/config.toml (global)
+```
+
+(Global by default; `beacon init --codex --project` scopes it to `.codex/config.toml`, and switching levels disables the other — same as the Claude hook.)
 
 Either way, Codex reports to the same local daemon your Claude Code sessions use, so the
 two see each other. Installing Beacon as a plugin does not make it Claude-Code-only: the
@@ -200,14 +219,27 @@ Optionally add one line to your `AGENTS.md` so Codex uses it proactively:
 
 **Cursor / Cline / Windsurf / Zed / Claude Agent SDK:** point the client's MCP config at the server. Zero-install: `command: npx`, `args: ["-y", "beacon-agents", "mcp"]`. If `beacon` is already on your PATH, `beacon mcp` works too.
 
-**What Codex gets today — be clear-eyed:**
+**What Codex gets with the plugin:**
 
-- ✅ **Visible to every other agent.** Codex's activity shows on the dashboard and in other agents' warnings — via the MCP tools, or with *zero* Codex config via `beacon watch`.
-- ✅ **Can check for collisions itself.** Codex can call `get_activity` / `report_activity` — proactively only if you add the `AGENTS.md` line above (otherwise it's available but the model won't call it on its own).
-- ❌ **No automatic pre-edit warning *inside* Codex.** Unlike Claude Code, Codex can't have a warning injected before an edit: its hooks fire only on Bash (not file writes) and can't add context. This is a Codex platform limitation, not a Beacon one.
-- 🔜 **Hard-block destructive git on conflict** — planned, via a Codex Bash hook (Codex hooks *can* deny). See the [roadmap](#roadmap).
+- ✅ **Warned before the edit, automatically.** Codex's `PreToolUse` fires on file edits, not
+  just shell commands, and it accepts the same `additionalContext` output Claude Code does.
+  Beacon injects the same one-line overlap warning into Codex's own context.
+- ✅ **Same guards on destructive git**, `git add -A` / `commit -a`, and redundant builds.
+- ✅ **Clears its presence when a turn ends**, via the `Stop` hook — no stale rows.
+- ✅ **Visible to every other agent**, on the dashboard and in everyone else's warnings.
 
-In short: **Claude Code = fully automatic, warned before every edit. Codex = visible to everyone + can query on request, but not auto-warned.**
+One implementation note: Codex delivers a file edit as `apply_patch` with the whole patch in
+`tool_input.command`, not a path — and one call can touch several files. Beacon parses the
+patch envelope and reports each file, so a patch that collides on any one of them is caught
+(`src/patch.js`).
+
+**Without the plugin** — MCP-only — Codex is still visible to everyone and can call
+`get_activity` / `report_activity`, but nothing is injected automatically; the model has to
+choose to ask.
+
+> This section used to say Codex could not be warned before an edit. That was true of an
+> earlier Codex, whose hooks fired only on Bash and could not add context. It is no longer
+> the case.
 
 ---
 
@@ -270,7 +302,7 @@ It clears when your session's turn ends (a Stop hook) and otherwise fades a few 
 ## Roadmap
 
 - [x] Native **MCP server** (`report_activity` / `get_activity`) — works with Codex, Cursor, Cline, Windsurf, Zed, and the Claude Agent SDK
-- [ ] `beacon init --codex` also installs a Codex Bash hook to hard-block destructive git ops on conflict
+- [x] **Codex plugin** — hooks + MCP server, warned before every edit, same as Claude Code (0.10.0)
 - [ ] `SessionStart` hook: greet each new session with a summary of what peers are doing
 - [ ] Optional hard **leases** for resources that truly need serialization (e.g. one build at a time)
 - [ ] Slack / desktop notification on overlap

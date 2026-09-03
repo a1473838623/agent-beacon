@@ -69,4 +69,38 @@ assert.equal(claimShortTtl(repeat, 'PreToolUse'), true, 'first of the repeated p
 await new Promise((r) => setTimeout(r, 20));
 assert.equal(claimShortTtl(repeat, 'PreToolUse'), true, 'same action later is a real event, not a duplicate');
 
+
+// ---- Codex apply_patch: the hook gets a patch envelope, not a file path ----
+const { filesFromPatch } = await import('../src/patch.js');
+
+const patch = [
+  '*** Begin Patch',
+  '*** Update File: src/app.js',
+  '@@ -1 +1 @@',
+  '-a',
+  '+b',
+  '*** Add File: src/new.ts',
+  '+hello',
+  '*** Delete File: src/old.ts',
+  '*** End Patch',
+].join('\n');
+
+// 13. every file the patch touches is extracted, resolved against cwd
+let files = filesFromPatch(patch, '/repo');
+assert.equal(files.length, 3, 'update + add + delete should all be reported');
+assert.ok(files.every((f) => path.isAbsolute(f)), 'patch paths are repo-relative and must be resolved');
+assert.ok(files.some((f) => f.replace(/\\/g, '/').endsWith('/repo/src/app.js')));
+
+// 14. a file named twice in one patch is reported once
+files = filesFromPatch('*** Update File: a.js\n*** Move to: a.js\n', '/repo');
+assert.equal(files.length, 1, 'duplicate paths collapse');
+
+// 15. an absolute path inside a patch is left alone
+files = filesFromPatch('*** Update File: /abs/x.js\n', '/repo');
+assert.equal(files[0].replace(/\\/g, '/'), '/abs/x.js');
+
+// 16. non-patch input yields nothing, so the hook falls through to allow()
+assert.equal(filesFromPatch('just a shell command', '/repo').length, 0);
+assert.equal(filesFromPatch('', '/repo').length, 0);
+
 console.log('✓ all smoke tests passed');

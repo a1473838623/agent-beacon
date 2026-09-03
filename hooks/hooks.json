@@ -1,9 +1,9 @@
 {
-  "description": "Beacon - reports what this session is touching and warns when it overlaps another agent. Fails open: if the daemon is down, sessions behave exactly as if Beacon were not installed. Safe to run alongside a `beacon init` install; duplicate events are suppressed at runtime.",
+  "description": "Beacon (Claude Code + Codex) - reports what this session is touching and warns when it overlaps another agent. Fails open: if the daemon is down, sessions behave exactly as if Beacon were not installed. Safe to run alongside a `beacon init` install; duplicate events are suppressed at runtime.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|Bash",
+        "matcher": "Edit|Write|MultiEdit|Bash|apply_patch",
         "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pretooluse.js\"", "timeout": 10 }
         ]

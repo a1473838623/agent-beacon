@@ -7,13 +7,13 @@
   },
   "metadata": {
     "description": "Beacon - real-time presence and collision-avoidance for parallel AI coding agents",
-    "version": "0.9.1"
+    "version": "0.10.0"
   },
   "plugins": [
     {
       "name": "beacon",
       "description": "Real-time presence and collision-avoidance for parallel AI coding agents. Warns you before two sessions edit the same file, or before a git checkout/reset/stash yanks the working tree out from under another agent.",
-      "version": "0.9.1",
+      "version": "0.10.0",
       "author": {
         "name": "Beacon contributors"
       },

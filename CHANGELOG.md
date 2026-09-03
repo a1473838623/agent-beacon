@@ -2,6 +2,38 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## 0.10.0
+
+**Beacon is now a Codex plugin too**, at parity with the Claude Code one:
+
+```
+codex plugin marketplace add a1473838623/agent-beacon
+```
+
+Codex's hook system has caught up since this project's earlier notes were written. Its
+`PreToolUse` now fires on file edits — not just shell commands — and accepts the same
+`additionalContext` and `permissionDecision` output Claude Code does. So Codex gets the
+real thing: the overlap warning injected into its own context *before* the edit, the same
+guards on destructive git and redundant builds, and presence cleared on `Stop`.
+
+- **`.codex-plugin/plugin.json`** and **`.agents/plugins/marketplace.json`** — the repo is
+  now its own marketplace for Codex as well as for Claude Code.
+- **One set of hooks serves both.** Codex accepts `${CLAUDE_PLUGIN_ROOT}` for compatibility
+  and aliases the `Edit`/`Write` matchers onto `apply_patch`, so `hooks/hooks.json` is
+  shared rather than duplicated.
+- **`apply_patch` support** (`src/patch.js`). Codex hands the hook a whole patch envelope in
+  `tool_input.command` rather than a file path, and one call can touch several files. The
+  patch is parsed for `Update File` / `Add File` / `Delete File` / `Move to` entries, each
+  file is reported, and conflicts are merged and de-duplicated across them. Paths inside a
+  patch are repo-relative, so they are resolved against `cwd` to compare equal with what
+  every other client reports.
+- **Fixed the README.** It stated that Codex could not be warned before an edit, "a Codex
+  platform limitation, not a Beacon one". That was true once and is not any more.
+- `npm version` now syncs the Codex manifest too.
+
+Note: Codex does not trust plugin hooks automatically. After installing, run `/hooks` and
+trust Beacon's definitions, or the hooks stay inert — the MCP tools work either way.
+
 ## 0.9.1
 
 - **Fixed: `beacon mcp` and foreground `beacon start` crashed on Windows.** Both dynamically

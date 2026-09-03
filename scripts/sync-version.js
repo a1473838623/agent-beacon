@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Keep the plugin manifests' version in step with package.json.
+// Keep the plugin manifests' version in step with package.json — Claude Code and Codex both.
 //
 // Claude Code only offers a plugin update when the manifest version changes, so a release
 // that bumped package.json alone would never reach plugin users. Wired into the npm
@@ -14,6 +14,7 @@ const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf
 const targets = [
   { file: '.claude-plugin/plugin.json', set: (j) => { j.version = version; } },
   { file: '.claude-plugin/marketplace.json', set: (j) => { j.metadata.version = version; j.plugins[0].version = version; } },
+  { file: '.codex-plugin/plugin.json', set: (j) => { j.version = version; } },
 ];
 
 for (const t of targets) {
