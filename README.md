@@ -8,6 +8,7 @@ Run two, five, ten Claude Code sessions on the same repo at once — and **never
 
 <p align="center"><b>English</b> · <a href="README.zh-CN.md">简体中文</a></p>
 
+[![npm](https://img.shields.io/npm/v/beacon-agents?color=cb3837&label=npm)](https://www.npmjs.com/package/beacon-agents)
 [![License: MIT](https://img.shields.io/badge/License-MIT-4c9aff.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-3fb950.svg)](https://nodejs.org)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-3fb950.svg)](package.json)
@@ -68,17 +69,23 @@ irm https://raw.githubusercontent.com/a1473838623/agent-beacon/main/install.ps1 
 **macOS / Linux:**
 
 ```bash
-git clone https://github.com/a1473838623/agent-beacon.git && cd agent-beacon
-npm link            # puts the `beacon` command on your PATH  (or: npm i -g beacon-agents)
-beacon init         # GLOBAL by default — every project on this machine is covered
-beacon start -d     # start the local daemon (background)
+npm i -g beacon-agents   # the `beacon` command; Node ≥ 18, zero dependencies
+beacon init              # GLOBAL by default — every project on this machine is covered
+beacon start -d          # start the local daemon (background)
 open http://127.0.0.1:4517
 ```
 
-> **The npm package is `beacon-agents`, not `agent-beacon`.** npm normalizes package names by
-> stripping punctuation, which collides with an unrelated, actively maintained package called
-> `agentbeacon`. The repository, the Claude Code plugin, the marketplace and the `beacon`
-> command are all unaffected — only `npm install` takes the different name.
+Working on Beacon itself? Clone and `npm link` instead:
+
+```bash
+git clone https://github.com/a1473838623/agent-beacon.git && cd agent-beacon && npm link
+```
+
+> **The npm package is [`beacon-agents`](https://www.npmjs.com/package/beacon-agents), not
+> `agent-beacon`.** npm normalizes package names by stripping punctuation, which collides with
+> an unrelated, actively maintained package called `agentbeacon`. The repository, the Claude
+> Code plugin, the marketplace and the `beacon` command are all unaffected — only
+> `npm install` takes the different name.
 
 > On Windows, `npm i -g` writes into Node's global prefix, which sits under
 > `C:\Program Files` for installer- and nvm-based setups and fails without elevation.
@@ -172,7 +179,7 @@ Optionally add one line to your `AGENTS.md` so Codex uses it proactively:
 
 > Before editing a file or running a risky command, call the `beacon` `get_activity` / `report_activity` tools to avoid colliding with other agents.
 
-**Cursor / Cline / Windsurf / Zed / Claude Agent SDK:** point the client's MCP config at the server (`command: node`, `args: ["<install>/mcp/server.js"]`, or just `beacon mcp` if `beacon` is on PATH).
+**Cursor / Cline / Windsurf / Zed / Claude Agent SDK:** point the client's MCP config at the server. Zero-install: `command: npx`, `args: ["-y", "beacon-agents", "mcp"]`. If `beacon` is already on your PATH, `beacon mcp` works too.
 
 **What Codex gets today — be clear-eyed:**
 
@@ -248,7 +255,7 @@ It clears when your session's turn ends (a Stop hook) and otherwise fades a few 
 - [ ] `SessionStart` hook: greet each new session with a summary of what peers are doing
 - [ ] Optional hard **leases** for resources that truly need serialization (e.g. one build at a time)
 - [ ] Slack / desktop notification on overlap
-- [ ] `npx agent-beacon` zero-install runner
+- [x] `npx beacon-agents` zero-install runner — done in 0.9.0
 
 Ideas and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 

@@ -2,6 +2,17 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## 0.9.1
+
+- **Fixed: `beacon mcp` and foreground `beacon start` crashed on Windows.** Both dynamically
+  imported an absolute path, and Node's ESM loader rejects a bare Windows path
+  (`ERR_UNSUPPORTED_ESM_URL_SCHEME` — "Received protocol 'c:'"). They now go through
+  `pathToFileURL()`. This broke the documented integration for every MCP client on Windows —
+  Codex, Cursor, Cline, Windsurf, Zed — since all of them are told to run `beacon mcp`.
+  `beacon start -d` was unaffected, because it spawns a child process rather than importing.
+- MCP clients can now use the published package with no install at all:
+  `command: npx`, `args: ["-y", "beacon-agents", "mcp"]`.
+
 ## 0.9.0
 
 **Beacon is now a Claude Code plugin.** Install it with

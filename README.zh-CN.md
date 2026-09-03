@@ -8,6 +8,7 @@
 
 <p align="center"><a href="README.md">English</a> · <b>简体中文</b></p>
 
+[![npm](https://img.shields.io/npm/v/beacon-agents?color=cb3837&label=npm)](https://www.npmjs.com/package/beacon-agents)
 [![License: MIT](https://img.shields.io/badge/License-MIT-4c9aff.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-3fb950.svg)](https://nodejs.org)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-3fb950.svg)](package.json)
@@ -65,14 +66,19 @@ irm https://raw.githubusercontent.com/a1473838623/agent-beacon/main/install.ps1 
 **macOS / Linux:**
 
 ```bash
-git clone https://github.com/a1473838623/agent-beacon.git && cd agent-beacon
-npm link            # 把 `beacon` 命令装到 PATH 上(或:npm i -g beacon-agents)
-beacon init         # 默认全局 —— 本机所有项目都覆盖
-beacon start -d     # 后台启动本地守护进程
+npm i -g beacon-agents   # 装上 `beacon` 命令;需要 Node ≥ 18,零依赖
+beacon init              # 默认全局 —— 本机所有项目都覆盖
+beacon start -d          # 后台启动本地守护进程
 open http://127.0.0.1:4517
 ```
 
-> **npm 包名是 `beacon-agents`,不是 `agent-beacon`。** npm 会去掉标点后比较包名,
+要改 Beacon 本身?那就 clone 下来 `npm link`:
+
+```bash
+git clone https://github.com/a1473838623/agent-beacon.git && cd agent-beacon && npm link
+```
+
+> **npm 包名是 [`beacon-agents`](https://www.npmjs.com/package/beacon-agents),不是 `agent-beacon`。** npm 会去掉标点后比较包名,
 > 而 `agent-beacon` 规范化后与一个无关的、仍在活跃维护的包 `agentbeacon` 完全撞名。
 > 仓库名、Claude Code 插件名、marketplace 名和 `beacon` 命令都不受影响 ——
 > 只有 `npm install` 用的是这个不同的名字。
@@ -162,7 +168,7 @@ beacon start -d
 
 > 在编辑文件或运行有风险的命令前,先调用 `beacon` 的 `get_activity` / `report_activity` 工具,避免和其他 agent 撞车。
 
-**Cursor / Cline / Windsurf / Zed / Claude Agent SDK:** 把该客户端的 MCP 配置指向本服务器(`command: node`,`args: ["<安装路径>/mcp/server.js"]`;若 `beacon` 已在 PATH 上,直接用 `beacon mcp`)。
+**Cursor / Cline / Windsurf / Zed / Claude Agent SDK:** 把该客户端的 MCP 配置指向本服务器。免安装写法:`command: npx`,`args: ["-y", "beacon-agents", "mcp"]`。若 `beacon` 已在 PATH 上,用 `beacon mcp` 也可以。
 
 **Codex 目前能得到什么 —— 说清楚,别有预期落差:**
 
@@ -238,7 +244,7 @@ BEACON_LOG_LEVEL=debug beacon start   # 记录每一次上报和工具调用
 - [ ] `SessionStart` hook:每个新会话启动时,先打个招呼、汇总同伴们正在做什么
 - [ ] 对真正需要串行的资源提供可选的硬**租约**(比如一次只允许一个构建)
 - [ ] 重叠时的 Slack / 桌面通知
-- [ ] `npx agent-beacon` 免安装运行
+- [x] `npx beacon-agents` 免安装运行 —— 0.9.0 已完成
 
 欢迎提想法和 PR —— 见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { LOGDIR, listLogDays, readLogDay, deleteLogDay } from '../src/log.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -55,7 +55,7 @@ async function cmdStart(args) {
     console.log('beacon started (detached) → ' + BASE);
     return;
   }
-  await import(DAEMON); // foreground
+  await import(pathToFileURL(DAEMON).href); // foreground
 }
 
 function cmdStop() {
@@ -436,7 +436,7 @@ const [cmd, ...args] = process.argv.slice(2);
     case 'init': return cmdInit(args);
     case 'uninit': return cmdUninit(args);
     case 'doctor': return cmdDoctor();
-    case 'mcp': return void import(MCP); // stdio MCP server (spawned by Codex/Cursor/etc.)
+    case 'mcp': return void import(pathToFileURL(MCP).href); // stdio MCP server (spawned by Codex/Cursor/etc.)
     case 'logs': return cmdLogs(args);
     case 'dashboard': return console.log(BASE);
     case undefined:
