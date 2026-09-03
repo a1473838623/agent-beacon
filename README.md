@@ -198,7 +198,7 @@ Beacon is **not locked to Claude Code**. The core is a language-agnostic local H
 | Actor | How it reports | Gets in-context warnings? |
 |---|---|---|
 | **Claude Code** | plugin install (or `beacon init`) — automatic, zero-config | ✅ yes, injected before the edit |
-| **Codex** | plugin install (hooks + MCP), or `beacon init --codex` for MCP only | ✅ yes with the plugin, injected before the edit |
+| **Codex** | plugin install, or `beacon init --codex` | ➖ MCP tools only — hooks do not fire in Codex |
 | **Any MCP agent** *(Cursor, Cline, Windsurf, Zed, Claude Agent SDK)* | point its MCP config at `beacon mcp` — `report_activity` / `get_activity` tools | ➖ can query & report |
 | **git / docker / CI scripts** | `with_report <action> <target> -- <cmd>` | — |
 | **Any editor or human** | `beacon watch <dir>` (file-system watcher) | — |
@@ -251,14 +251,25 @@ Optionally add one line to your `AGENTS.md` so Codex uses it proactively:
 
 **Cursor / Cline / Windsurf / Zed / Claude Agent SDK:** point the client's MCP config at the server. Zero-install: `command: npx`, `args: ["-y", "beacon-agents", "mcp"]`. If `beacon` is already on your PATH, `beacon mcp` works too.
 
-**What Codex gets with the plugin:**
+**What Codex gets with the plugin — measured, not read off the docs:**
 
-- ✅ **Warned before the edit, automatically.** Codex's `PreToolUse` fires on file edits, not
-  just shell commands, and it accepts the same `additionalContext` output Claude Code does.
-  Beacon injects the same one-line overlap warning into Codex's own context.
-- ✅ **Same guards on destructive git**, `git add -A` / `commit -a`, and redundant builds.
-- ✅ **Clears its presence when a turn ends**, via the `Stop` hook — no stale rows.
-- ✅ **Visible to every other agent**, on the dashboard and in everyone else's warnings.
+- ✅ **The MCP server runs.** `report_activity` / `get_activity` are available in every
+  Codex session, so Codex can announce what it is about to touch and ask who else is on it.
+- ✅ **Visible to every other agent**, on the dashboard and in everyone else's warnings,
+  as soon as it reports.
+- ❌ **No automatic pre-edit warning.** Beacon's hooks do not fire in Codex. The manifest
+  declares them, the plugin installs, and nothing runs: Codex's log contains no hook
+  evaluation at all, and a real Codex edit produced no report to the daemon.
+
+The docs describe `type: "command"` hooks, `hooks/hooks.json` and a `${PLUGIN_ROOT}`
+variable. None of the six plugins OpenAI bundles uses any of them — every bundled hook is
+`type: "mcp_tool"` on `Stop`, and not one ships a `hooks/` directory. Read alongside the
+silent no-op, the likely reading is that this Codex build does not run command hooks that
+come from a plugin. Until that is settled, treat Codex as MCP-only.
+
+So the honest summary is the one this README carried before 0.10.0, for a different reason:
+**Claude Code is warned before every edit; Codex is visible to everyone and can ask, but is
+not warned automatically.** Adding the `AGENTS.md` line below is what makes Codex ask.
 
 Two implementation notes:
 
@@ -342,7 +353,8 @@ It clears when your session's turn ends (a Stop hook) and otherwise fades a few 
 ## Roadmap
 
 - [x] Native **MCP server** (`report_activity` / `get_activity`) — works with Codex, Cursor, Cline, Windsurf, Zed, and the Claude Agent SDK
-- [x] **Codex plugin** — hooks + MCP server, warned before every edit, same as Claude Code (0.10.0)
+- [x] **Codex plugin** — MCP server, installable from the plugin marketplace (0.10.0)
+- [ ] Pre-edit warnings inside Codex — its plugin hooks do not fire; retry as an `mcp_tool` hook, the only form OpenAI's own plugins use
 - [ ] `SessionStart` hook: greet each new session with a summary of what peers are doing
 - [ ] Optional hard **leases** for resources that truly need serialization (e.g. one build at a time)
 - [ ] Slack / desktop notification on overlap

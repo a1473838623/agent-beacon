@@ -1,6 +1,6 @@
 {
   "name": "beacon",
-  "version": "0.10.4",
+  "version": "0.10.5",
   "description": "Real-time presence and collision-avoidance for parallel AI coding agents. Warns you before two agents edit the same file, or before a git checkout/reset/stash yanks the working tree out from under another agent. Sees Claude Code, Codex and any MCP client on one shared local bus.",
   "author": {
     "name": "Beacon contributors"

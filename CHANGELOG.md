@@ -2,6 +2,27 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## 0.10.5
+
+- **Corrected the README: Beacon's hooks do not fire in Codex.** 0.10.0 claimed parity with
+  Claude Code — warned before every edit — on the strength of the documented hook API. The
+  runtime disagrees. A real Codex edit produced no report to the daemon, and Codex's log
+  contains no hook evaluation whatsoever: no `PreToolUse`, no `apply_patch`, no
+  `hooks.json`, not even a rejection.
+
+  Nor is there a working example to copy. Of the six plugins OpenAI bundles, every hook is
+  `type: "mcp_tool"` on `Stop`; none uses `type: "command"`, none declares `PreToolUse`, and
+  none ships a `hooks/` directory — the three things the docs describe and this plugin used.
+  The likely reading is that command hooks from a plugin do not run in this build.
+
+  Codex is therefore MCP-only for now, and the README says so. The MCP server does work
+  (fixed in 0.10.2) and is verified running in a live session, so Codex stays visible to
+  every other agent and can query for collisions; it just is not warned automatically.
+
+  The docs have now been wrong three times on adjacent details — `ON_FIRST_USE`,
+  `${CLAUDE_PLUGIN_ROOT}`, and command hooks — so the Codex integration is documented from
+  measurement from here on.
+
 ## 0.10.4
 
 - **Fixed: `install.ps1` could add a PATH entry that Windows silently discards.** cmd.exe

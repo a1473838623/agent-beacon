@@ -182,7 +182,7 @@ Beacon **并不锁定在 Claude Code 上**。内核是一条语言无关的本�
 | 参与方 | 如何上报 | 能收到上下文内警告吗? |
 |---|---|---|
 | **Claude Code** | 装插件(或 `beacon init`)—— 自动、零配置 | ✅ 能,在编辑前注入 |
-| **Codex** | 装插件(hook + MCP),或 `beacon init --codex` 只接 MCP | ✅ 装插件后能,在编辑前注入 |
+| **Codex** | 装插件,或 `beacon init --codex` | ➖ 只有 MCP 工具 —— hook 在 Codex 里不触发 |
 | **任意 MCP agent** *(Cursor、Cline、Windsurf、Zed、Claude Agent SDK)* | 把它的 MCP 配置指向 `beacon mcp` —— `report_activity` / `get_activity` 工具 | ➖ 能查询和上报 |
 | **git / docker / CI 脚本** | `with_report <action> <target> -- <cmd>` | — |
 | **任意编辑器或人** | `beacon watch <dir>`(文件系统监听) | — |
@@ -236,14 +236,24 @@ args = ["-y", "beacon-agents", "mcp"]
 
 **Cursor / Cline / Windsurf / Zed / Claude Agent SDK:** 把该客户端的 MCP 配置指向本服务器。免安装写法:`command: npx`,`args: ["-y", "beacon-agents", "mcp"]`。若 `beacon` 已在 PATH 上,用 `beacon mcp` 也可以。
 
-**装了插件之后,Codex 能得到什么:**
+**装了插件之后 Codex 能得到什么 —— 实测结论,不是照文档抄的:**
 
-- ✅ **编辑前被自动警告。** Codex 的 `PreToolUse` 对**文件编辑**也触发(不只是 shell),
-  而且接受和 Claude Code 相同的 `additionalContext` 输出。同一行重叠警告会被注入
-  Codex 自己的上下文。
-- ✅ **同样守着破坏性 git**、`git add -A` / `commit -a`、以及重复的构建/部署。
-- ✅ **回合结束时清除自己的存在**(靠 `Stop` hook),面板上不会留下过期条目。
-- ✅ **对其他所有 agent 可见**,出现在面板和别人的警告里。
+- ✅ **MCP 服务器能跑起来。** 每个 Codex 会话里都有 `report_activity` / `get_activity`,
+  所以 Codex 可以宣告自己要动什么、也可以问还有谁在动。
+- ✅ **对其他所有 agent 可见** —— 只要它上报,就会出现在面板和别人的警告里。
+- ❌ **没有编辑前的自动警告。** Beacon 的 hook 在 Codex 里**不触发**。清单里声明了、
+  插件也装上了,但什么都没执行:Codex 日志里没有任何一条 hook 求值记录,
+  真实编辑一次也没有产生任何上报。
+
+文档写了 `type: "command"` hook、`hooks/hooks.json`、以及 `${PLUGIN_ROOT}` 变量。
+但 OpenAI 自己 bundle 的 6 个插件**一个都没用这三样** —— 所有 hook 都是
+`Stop` 上的 `type: "mcp_tool"`,没有一个带 `hooks/` 目录。结合"静默不执行"这个现象,
+比较合理的解读是:这个 Codex 构建不执行来自插件的 command 类型 hook。
+在这一点被确认之前,请把 Codex 当作**只有 MCP** 来用。
+
+所以诚实的结论又回到了 0.10.0 之前 README 里那句话(只是原因不同):
+**Claude Code 每次编辑前都会被警告;Codex 对所有人可见、也能主动查询,但不会被自动警告。**
+下面那行加进 `AGENTS.md` 的提示,才是让 Codex 主动去问的办法。
 
 两个实现细节:
 
@@ -323,7 +333,8 @@ BEACON_LOG_LEVEL=debug beacon start   # 记录每一次上报和工具调用
 ## 路线图
 
 - [x] 原生 **MCP 服务器**(`report_activity` / `get_activity`)—— 支持 Codex、Cursor、Cline、Windsurf、Zed 和 Claude Agent SDK
-- [x] **Codex 插件** —— hook + MCP 服务器,每次编辑前被警告,与 Claude Code 对等(0.10.0)
+- [x] **Codex 插件** —— MCP 服务器,可从插件市场安装(0.10.0)
+- [ ] Codex 内部的编辑前警告 —— 它的插件 hook 不触发;改用 `mcp_tool` 形态再试(那是 OpenAI 自家插件唯一在用的写法)
 - [ ] `SessionStart` hook:每个新会话启动时,先打个招呼、汇总同伴们正在做什么
 - [ ] 对真正需要串行的资源提供可选的硬**租约**(比如一次只允许一个构建)
 - [ ] 重叠时的 Slack / 桌面通知
