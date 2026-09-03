@@ -38,7 +38,7 @@ Beacon is a tiny local service that gives every agent a shared, real-time pictur
 - 📊 **Live dashboard** — every active agent in real time, **color-coded per session**, with per-row **details**, a **light/dark** toggle, optional **grouping of edits by session or conversation turn**, and a **Settings** panel (update checks, start-on-login, per-day log viewer).
 - 🪶 **Weightless & invisible** — zero dependencies, 100% local, and it **never blocks your work**. No conflict? You never notice it's there.
 
-> **Safe by design:** Beacon is advisory. It *fails open* — if the daemon is down or anything errors, your session behaves exactly as if Beacon weren't installed. It never denies an edit by default, and in the common (no-overlap) case it adds **zero tokens** to your agent's context.
+> **Safe by design:** Beacon is advisory. It *fails open* — if the daemon is down or anything errors, your session behaves exactly as if Beacon weren't installed. It never denies an edit by default, and in the common (no-overlap) case it adds **zero tokens** to your agent's context. Nothing leaves your machine — see [PRIVACY.md](PRIVACY.md).
 
 ---
 
