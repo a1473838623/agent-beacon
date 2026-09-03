@@ -2,6 +2,35 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## 0.9.0
+
+**Beacon is now a Claude Code plugin.** Install it with
+`/plugin marketplace add a1473838623/agent-beacon` — the plugin ships the hooks and the MCP
+server together, shows up under `/plugin` and `/mcp`, and needs no `beacon init`.
+
+- **Plugin support.** Added `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`
+  (the repo is its own marketplace), `hooks/hooks.json` and `.mcp.json`. The MCP server is
+  now registered for Claude Code, not just Codex.
+- **Exactly-once reporting, whatever is installed.** Claude Code runs every matching hook
+  registration, so a plugin install layered on a `beacon init` install used to report each
+  edit twice. Hooks now fingerprint the event they received and atomically claim it, so one
+  process handles it and the rest exit silently (`src/dedupe.js`). Fails open: if the claim
+  can't be taken, the event is reported rather than dropped.
+- **`beacon doctor`** — lists every place Beacon is registered (plugin, global settings,
+  project settings, Codex) and flags redundant installs.
+- **`beacon uninit`** — removes the `settings.json` hooks; the migration path to the plugin.
+- **`beacon init` no longer stacks on a plugin install** — it detects one and stops, unless
+  you pass `--force`.
+- **`install.ps1`** — one-command Windows install that doesn't need Administrator rights.
+  `npm i -g` writes into Node's global prefix, which is under `C:\Program Files` for
+  installer- and nvm-based setups; this installs under `%LOCALAPPDATA%` and puts a shim on
+  the user PATH.
+- **Fixed: `mcp/` was missing from the published npm package**, so `beacon mcp` was broken
+  for anyone who installed from npm rather than a git clone.
+- `npm version` now syncs the plugin manifests via `scripts/sync-version.js`, so plugin
+  users actually receive updates.
+
+
 ## [0.8.7] — 2026-07-25
 
 ### Added

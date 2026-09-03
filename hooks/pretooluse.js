@@ -10,6 +10,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { log } from '../src/log.js';
+import { claimEvent } from '../src/dedupe.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.BEACON_PORT) || 4517;
@@ -69,6 +70,9 @@ async function main() {
   let input;
   try { input = JSON.parse(await readStdin()); } catch { return allow(); }
   if (GUARD === 'off') return allow();
+  // Beacon may be registered from several places at once (plugin + global/project settings).
+  // Exactly one of those processes handles this event; the rest exit silently.
+  if (!claimEvent(input, 'PreToolUse')) return allow();
 
   const tool = input.tool_name;
   const ti = input.tool_input || {};

@@ -5,6 +5,7 @@
 // the local daemon. Fails open and silent.
 import { getSettings } from '../src/settings.js';
 import { log } from '../src/log.js';
+import { claimEvent } from '../src/dedupe.js';
 
 const PORT = Number(process.env.BEACON_PORT) || 4517;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -34,6 +35,7 @@ async function main() {
   try { input = JSON.parse(await readStdin()); } catch { return; }
   const sessionId = input.session_id;
   if (!sessionId) return;
+  if (!claimEvent(input, 'UserPromptSubmit')) return; // a sibling registration already recorded this turn
   const title = titleFromPrompt(input.user_prompt);
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), 350);

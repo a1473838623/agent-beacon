@@ -1,0 +1,10 @@
+{
+  "name": "beacon",
+  "description": "Real-time presence and collision-avoidance for parallel AI coding agents. Warns you before two sessions edit the same file, or before a git checkout/reset/stash yanks the working tree out from under another agent.",
+  "version": "0.9.0",
+  "author": { "name": "Beacon contributors" },
+  "homepage": "https://github.com/a1473838623/agent-beacon",
+  "repository": "https://github.com/a1473838623/agent-beacon",
+  "license": "MIT",
+  "keywords": ["agents", "parallel", "collision-avoidance", "presence", "hooks", "mcp"]
+}

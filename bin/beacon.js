@@ -201,8 +201,59 @@ function removeClaudeHook(file) {
   return true;
 }
 
+function readJson(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
+}
+
+// Every place Claude Code can load Beacon from. More than one is allowed — the hooks dedupe
+// at runtime (src/dedupe.js) so an event is still reported exactly once — but a user who set
+// up two by accident should be told, because it doubles the process spawns per edit.
+function registrations() {
+  const out = [];
+  for (const level of ['global', 'project']) {
+    const file = claudeFile(level);
+    const s = readJson(file);
+    if (!s) continue;
+    if (s.hooks && /pretooluse\.js|userprompt\.js|stop\.js/.test(JSON.stringify(s.hooks))) {
+      out.push({ kind: 'settings', level, file });
+    }
+    for (const name of Object.keys(s.enabledPlugins || {})) {
+      if (/^beacon@/.test(name)) out.push({ kind: 'plugin', level, file, name });
+    }
+  }
+  if (process.env.CLAUDE_PLUGIN_ROOT) {
+    out.push({ kind: 'plugin', level: 'session', file: process.env.CLAUDE_PLUGIN_ROOT, name: 'beacon (--plugin-dir)' });
+  }
+  return out;
+}
+
+function codexRegistrations() {
+  const out = [];
+  for (const level of ['global', 'project']) {
+    const file = codexFile(level);
+    try {
+      if (fs.existsSync(file) && fs.readFileSync(file, 'utf8').includes('[mcp_servers.beacon]')) out.push({ level, file });
+    } catch { /* */ }
+  }
+  return out;
+}
+
 function cmdInit(args) {
   if (args.includes('--codex')) return cmdInitCodex(args);
+
+  // If Beacon is already installed as a plugin, adding the settings.json hooks on top is
+  // redundant: same three hooks, twice the processes per edit. Runtime dedupe means it would
+  // still behave correctly, but there's no reason to pay for it.
+  const plugins = registrations().filter((r) => r.kind === 'plugin');
+  if (plugins.length && !args.includes('--force')) {
+    console.log('Beacon is already installed as a Claude Code plugin:');
+    for (const p of plugins) console.log(`  • ${p.name} [${p.level}]`);
+    console.log('\nThe plugin already provides these hooks, so `beacon init` is not needed.');
+    console.log('Nothing was changed. Re-run with --force if you want both anyway');
+    console.log('(harmless — duplicate events are suppressed — but it spawns each hook twice).');
+    return;
+  }
+
   const level = args.includes('--project') ? 'project' : 'global'; // default: global
   const other = level === 'project' ? 'global' : 'project';
   const targetFile = claudeFile(level);
@@ -282,6 +333,62 @@ function cmdInitCodex(args) {
   console.log('\nCodex sessions can now see and report activity via the beacon MCP tools.');
 }
 
+// Remove the settings.json hooks. The migration path for someone moving to the plugin, and
+// the "get it off my machine" path for someone uninstalling.
+function cmdUninit(args) {
+  const levels = args.includes('--project') ? ['project'] : args.includes('--global') ? ['global'] : ['global', 'project'];
+  let any = false;
+  for (const level of levels) {
+    const file = claudeFile(level);
+    if (removeClaudeHook(file)) { console.log(`✓ Removed Beacon hooks [${level}]: ${file}`); any = true; }
+  }
+  if (!any) console.log('No Beacon hooks found in Claude Code settings — nothing to remove.');
+  const plugins = registrations().filter((r) => r.kind === 'plugin');
+  if (plugins.length) {
+    console.log(`\nStill active as a plugin: ${plugins.map((p) => p.name).join(', ')}`);
+    console.log('Remove that with:  claude plugin uninstall beacon');
+  }
+}
+
+async function cmdDoctor() {
+  console.log(`beacon doctor · v${pkgVersion()}\n`);
+
+  const up = await isUp();
+  console.log(`daemon:  ${up ? 'running · ' + BASE : 'not running (hooks will lazy-start it on the next edit)'}`);
+  console.log(`install: ${ROOT}`);
+  console.log(`data:    ${BEACON_HOME}\n`);
+
+  const regs = registrations();
+  console.log('Claude Code registrations:');
+  if (!regs.length) {
+    console.log('  (none)  →  install with `claude plugin install beacon@agent-beacon`, or `beacon init`');
+  } else {
+    for (const r of regs) {
+      console.log(r.kind === 'plugin'
+        ? `  • plugin   [${r.level}]  ${r.name}`
+        : `  • settings [${r.level}]  ${r.file}`);
+    }
+  }
+
+  const codex = codexRegistrations();
+  if (codex.length) {
+    console.log('\nCodex / MCP registrations:');
+    for (const c of codex) console.log(`  • [${c.level}]  ${c.file}`);
+  }
+
+  if (regs.length > 1) {
+    console.log(`\n⚠ ${regs.length} registrations are active. Each edit spawns the hooks ${regs.length}×.`);
+    console.log('  Reporting stays correct — duplicate events are suppressed at runtime — but you');
+    console.log('  only need one. Recommended: keep the plugin and run `beacon uninit`.');
+  } else if (regs.length === 1) {
+    console.log('\n✓ Exactly one registration — no duplicate reporting.');
+  }
+}
+
+function pkgVersion() {
+  try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version; } catch { return '?'; }
+}
+
 function parseFlags(args) {
   const o = {};
   for (let i = 0; i < args.length; i++) {
@@ -300,7 +407,9 @@ function help() {
   console.log(`beacon — real-time presence for parallel AI coding agents
 
 Usage:
-  beacon init [--project]    Install the Claude Code hook (default: global; --project = this repo only)
+  beacon init [--project]    Install the Claude Code hooks (default: global; --project = this repo only)
+  beacon uninit [--global|--project]  Remove them again (use this when switching to the plugin)
+  beacon doctor              Show where Beacon is registered and flag redundant installs
   beacon init --codex [--project]  Register the MCP server for Codex (default: global)
   beacon mcp                 Run the stdio MCP server (spawned by Codex/Cursor/etc.)
   beacon start [-d]          Start the daemon (-d = detached/background)
@@ -325,6 +434,8 @@ const [cmd, ...args] = process.argv.slice(2);
     case 'report': return cmdReport(args);
     case 'watch': return cmdWatch(args);
     case 'init': return cmdInit(args);
+    case 'uninit': return cmdUninit(args);
+    case 'doctor': return cmdDoctor();
     case 'mcp': return void import(MCP); // stdio MCP server (spawned by Codex/Cursor/etc.)
     case 'logs': return cmdLogs(args);
     case 'dashboard': return console.log(BASE);

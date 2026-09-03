@@ -43,22 +43,65 @@ Beacon is a tiny local service that gives every agent a shared, real-time pictur
 
 ## Quick start
 
+Pick the install that matches how you use Beacon. Both talk to the same local daemon, and
+**both can be installed at once** — Beacon suppresses duplicate reports at runtime.
+
+### Claude Code — install the plugin (recommended)
+
 ```bash
-# 1. Get it (Node ≥ 18)
+/plugin marketplace add a1473838623/agent-beacon
+/plugin install beacon@agent-beacon
+```
+
+That is the whole setup. The plugin brings the hooks *and* the MCP server, and the daemon
+lazy-starts itself on the first edit — nothing else to run. Beacon shows up under `/plugin`
+and `/mcp`, and you can disable it from there without editing any config file.
+
+### CLI — for the `beacon` command, the dashboard, and non-Claude-Code agents
+
+**Windows** (no Administrator rights needed):
+
+```powershell
+irm https://raw.githubusercontent.com/a1473838623/agent-beacon/main/install.ps1 | iex
+```
+
+**macOS / Linux:**
+
+```bash
 git clone https://github.com/a1473838623/agent-beacon.git && cd agent-beacon
 npm link            # puts the `beacon` command on your PATH  (or: npm i -g agent-beacon)
-
-# 2. Wire up Claude Code + start the daemon
 beacon init         # GLOBAL by default — every project on this machine is covered
 beacon start -d     # start the local daemon (background)
-
-# 3. Watch it live
 open http://127.0.0.1:4517
 ```
 
-That's the whole setup. **Every new Claude Code session on this machine now reports activity automatically** — no per-project steps, no per-session steps, no prompts to remember.
+> On Windows, `npm i -g` writes into Node's global prefix, which sits under
+> `C:\Program Files` for installer- and nvm-based setups and fails without elevation.
+> `install.ps1` installs under `%LOCALAPPDATA%` and puts a shim on your user PATH instead.
 
-Open a second session, have both edit the same file, and watch the overlap light up on the dashboard while the second agent gets a warning in its context.
+**Every new Claude Code session on this machine now reports activity automatically** — no
+per-project steps, no per-session steps, no prompts to remember.
+
+Open a second session, have both edit the same file, and watch the overlap light up on the
+dashboard while the second agent gets a warning in its context.
+
+### Running both installs at once
+
+Nothing breaks. Claude Code runs every matching hook registration, so having the plugin
+*and* `beacon init` means each hook script is spawned two or three times per edit — but each
+event is handled exactly once. Every hook fingerprints the event it received and atomically
+claims it; whichever process gets there first does the work, and its siblings exit silently
+(`src/dedupe.js`). No duplicate rows, no duplicate warnings, no double-counted conflicts.
+
+It is still wasted work, so Beacon tells you about it:
+
+```bash
+beacon doctor       # lists every place Beacon is registered, flags redundant ones
+beacon uninit       # removes the settings.json hooks (use when moving to the plugin)
+```
+
+`beacon init` also detects an existing plugin install and stops rather than stacking on top
+of it (override with `--force`).
 
 ### Global vs project scope
 
@@ -98,7 +141,7 @@ Beacon is **not locked to Claude Code**. The core is a language-agnostic local H
 
 | Actor | How it reports | Gets in-context warnings? |
 |---|---|---|
-| **Claude Code** | `beacon init` (PreToolUse hook) — automatic, zero-config | ✅ yes, injected before the edit |
+| **Claude Code** | plugin install (or `beacon init`) — automatic, zero-config | ✅ yes, injected before the edit |
 | **Codex** | `beacon init --codex` (MCP server) + one line in `AGENTS.md` | ➖ can query & report; the model decides how to act |
 | **Any MCP agent** *(Cursor, Cline, Windsurf, Zed, Claude Agent SDK)* | point its MCP config at `beacon mcp` — `report_activity` / `get_activity` tools | ➖ can query & report |
 | **git / docker / CI scripts** | `with_report <action> <target> -- <cmd>` | — |

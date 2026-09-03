@@ -3,6 +3,7 @@
 // dashboard/other agents stop showing "editing" for a session that's no longer working.
 // Fails open and silent, exactly like the PreToolUse hook.
 import { log } from '../src/log.js';
+import { claimEvent } from '../src/dedupe.js';
 
 const PORT = Number(process.env.BEACON_PORT) || 4517;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -22,6 +23,7 @@ async function main() {
   try { input = JSON.parse(await readStdin()); } catch { return; }
   const actor = input.session_id;
   if (!actor) return;
+  if (!claimEvent(input, 'Stop')) return; // a sibling registration already cleared this session
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), 350);
   try {

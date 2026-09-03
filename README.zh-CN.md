@@ -43,22 +43,55 @@ Beacon 是一个极小的本地服务,给每个 agent 一张共享的、实时�
 
 ## 快速开始
 
+按你的使用方式挑一种安装。两种方式连的是同一个本地守护进程,而且**可以同时装** —— Beacon 会在运行时抑制重复上报。
+
+### Claude Code —— 装插件(推荐)
+
 ```bash
-# 1. 获取(需要 Node ≥ 18)
+/plugin marketplace add a1473838623/agent-beacon
+/plugin install beacon@agent-beacon
+```
+
+配置到此为止。插件同时带上 hook **和** MCP 服务器,守护进程会在第一次编辑时自行拉起 —— 不需要再跑任何命令。Beacon 会出现在 `/plugin` 和 `/mcp` 里,想关掉直接在那里关,不用改任何配置文件。
+
+### CLI —— 要 `beacon` 命令、看板,或者接非 Claude Code 的 agent
+
+**Windows**(不需要管理员权限):
+
+```powershell
+irm https://raw.githubusercontent.com/a1473838623/agent-beacon/main/install.ps1 | iex
+```
+
+**macOS / Linux:**
+
+```bash
 git clone https://github.com/a1473838623/agent-beacon.git && cd agent-beacon
 npm link            # 把 `beacon` 命令装到 PATH 上(或:npm i -g agent-beacon)
-
-# 2. 接好 Claude Code + 启动守护进程
 beacon init         # 默认全局 —— 本机所有项目都覆盖
 beacon start -d     # 后台启动本地守护进程
-
-# 3. 实时查看
 open http://127.0.0.1:4517
 ```
 
-配置到此为止。**本机新开的每个 Claude Code 会话现在都会自动上报活动** —— 无需每个项目单独配、无需每个会话手动操作,也没有需要记住的提示词。
+> Windows 上 `npm i -g` 会写进 Node 的全局目录,而无论是官方安装包还是 nvm,那个目录都在
+> `C:\Program Files` 下,不提权就会失败。`install.ps1` 改为装到 `%LOCALAPPDATA%`,
+> 并把 shim 放进用户 PATH。
+
+**本机新开的每个 Claude Code 会话现在都会自动上报活动** —— 无需每个项目单独配、无需每个会话手动操作,也没有需要记住的提示词。
 
 再开一个会话,让两个会话都去改同一个文件,你会看到面板上 overlap 亮起,同时第二个 agent 在它的上下文里收到警告。
+
+### 两种安装同时存在时
+
+不会出问题。Claude Code 会执行每一处匹配的 hook 注册,所以插件 + `beacon init` 同时存在时,每次编辑会把 hook 脚本拉起两到三遍 —— 但每个事件只会被处理一次。每个 hook 会给收到的事件算指纹并原子地"认领"它,先到的那个进程干活,其余的静默退出(`src/dedupe.js`)。不会有重复的行、重复的警告,也不会把冲突数算重。
+
+但这终究是白跑的进程,所以 Beacon 会主动告诉你:
+
+```bash
+beacon doctor       # 列出 Beacon 被注册在哪些地方,并标出多余的
+beacon uninit       # 移除 settings.json 里的 hook(切换到插件时用)
+```
+
+`beacon init` 也会检测到已装的插件并直接停下,而不是再叠一层(用 `--force` 可强行覆盖)。
 
 ### 全局 vs 项目级
 
@@ -98,7 +131,7 @@ Beacon **并不锁定在 Claude Code 上**。内核是一条语言无关的本�
 
 | 参与方 | 如何上报 | 能收到上下文内警告吗? |
 |---|---|---|
-| **Claude Code** | `beacon init`(PreToolUse hook)—— 自动、零配置 | ✅ 能,在编辑前注入 |
+| **Claude Code** | 装插件(或 `beacon init`)—— 自动、零配置 | ✅ 能,在编辑前注入 |
 | **Codex** | `beacon init --codex`(MCP 服务器)+ 在 `AGENTS.md` 加一行 | ➖ 能查询和上报;由模型自行决定如何反应 |
 | **任意 MCP agent** *(Cursor、Cline、Windsurf、Zed、Claude Agent SDK)* | 把它的 MCP 配置指向 `beacon mcp` —— `report_activity` / `get_activity` 工具 | ➖ 能查询和上报 |
 | **git / docker / CI 脚本** | `with_report <action> <target> -- <cmd>` | — |
