@@ -2,6 +2,21 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## 0.10.1
+
+- **Fixed: Codex never registered Beacon's hooks.** The Codex manifest declared
+  `"hooks": "./hooks/hooks.json"`, the string-path form the docs describe. Codex silently
+  ignores it — the Hooks page showed "no hooks found" while the MCP server worked fine, so
+  the plugin looked installed but only half of it was. The hooks are now inlined into
+  `.codex-plugin/plugin.json` as an object, the only form OpenAI's own bundled plugins use.
+- The inline copy uses Codex's native `${PLUGIN_ROOT}`; `hooks/hooks.json` keeps
+  `${CLAUDE_PLUGIN_ROOT}` for Claude Code. Two copies of the same three hooks now exist, so
+  a test asserts they declare the same events, matchers and scripts — a hook added to one
+  and forgotten in the other would otherwise fail silently.
+- `npm run pack:plugin` builds a `.zip` of the plugin for the Claude desktop app's
+  **Upload local plugin** dialog, via `git archive` (no dependencies, contents at the
+  archive root).
+
 ## 0.10.0
 
 **Beacon is now a Codex plugin too**, at parity with the Claude Code one:

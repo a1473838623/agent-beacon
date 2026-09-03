@@ -1,6 +1,6 @@
 {
   "name": "beacon",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Real-time presence and collision-avoidance for parallel AI coding agents. Warns you before two agents edit the same file, or before a git checkout/reset/stash yanks the working tree out from under another agent. Sees Claude Code, Codex and any MCP client on one shared local bus.",
   "author": {
     "name": "Beacon contributors"
@@ -16,7 +16,44 @@
     "hooks",
     "mcp"
   ],
-  "hooks": "./hooks/hooks.json",
+  "hooks": {
+    "hooks": {
+      "PreToolUse": [
+        {
+          "matcher": "Edit|Write|MultiEdit|Bash|apply_patch",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "node \"${PLUGIN_ROOT}/hooks/pretooluse.js\"",
+              "timeout": 10
+            }
+          ]
+        }
+      ],
+      "UserPromptSubmit": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "node \"${PLUGIN_ROOT}/hooks/userprompt.js\"",
+              "timeout": 10
+            }
+          ]
+        }
+      ],
+      "Stop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "node \"${PLUGIN_ROOT}/hooks/stop.js\"",
+              "timeout": 10
+            }
+          ]
+        }
+      ]
+    }
+  },
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Beacon",

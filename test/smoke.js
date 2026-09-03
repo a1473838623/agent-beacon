@@ -103,4 +103,29 @@ assert.equal(files[0].replace(/\\/g, '/'), '/abs/x.js');
 assert.equal(filesFromPatch('just a shell command', '/repo').length, 0);
 assert.equal(filesFromPatch('', '/repo').length, 0);
 
+// ---- the two hook manifests must not drift apart ----
+// Claude Code reads hooks/hooks.json. Codex ignores a string path there and only picks up
+// hooks inlined into its own manifest, so the same three hooks are declared twice. Assert
+// they stay in step: a hook added to one and forgotten in the other fails silently at
+// runtime, which is the worst way for this to break.
+const claudeHooks = JSON.parse(fs.readFileSync(new URL('../hooks/hooks.json', import.meta.url), 'utf8')).hooks;
+const codexHooks = JSON.parse(fs.readFileSync(new URL('../.codex-plugin/plugin.json', import.meta.url), 'utf8')).hooks.hooks;
+
+// Reduce an entry list to what must match, ignoring the plugin-root variable name:
+// Claude Code only knows ${CLAUDE_PLUGIN_ROOT}, Codex prefers its native ${PLUGIN_ROOT}.
+const shape = (entries) => entries.map((e) => ({
+  matcher: e.matcher || '',
+  scripts: (e.hooks || []).map((h) => String(h.command).replace(/\$\{[A-Z_]*PLUGIN_ROOT\}/, '<root>')),
+}));
+
+// 17. both manifests declare the same hook events
+assert.deepEqual(Object.keys(codexHooks).sort(), Object.keys(claudeHooks).sort(),
+  'Claude and Codex manifests must declare the same hook events');
+
+// 18. and the same matcher + script for each
+for (const event of Object.keys(claudeHooks)) {
+  assert.deepEqual(shape(codexHooks[event]), shape(claudeHooks[event]),
+    `hook "${event}" differs between the Claude and Codex manifests`);
+}
+
 console.log('✓ all smoke tests passed');

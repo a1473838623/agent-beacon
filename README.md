@@ -58,6 +58,25 @@ That is the whole setup. The plugin brings the hooks *and* the MCP server, and t
 lazy-starts itself on the first edit — nothing else to run. Beacon shows up under `/plugin`
 and `/mcp`, and you can disable it from there without editing any config file.
 
+### Claude desktop app — upload the plugin
+
+The desktop app has no `/plugin` terminal panel. Add the marketplace from its plugin
+browser, or upload a plugin archive directly under **Settings → Plugins → Add → Upload
+local plugin**. Build the archive with:
+
+```bash
+npm run pack:plugin      # → beacon-plugin.zip
+```
+
+It uses `git archive`, so the plugin files sit at the archive root (`.claude-plugin/
+plugin.json` directly inside, not nested in a folder), which is what the dialog expects.
+
+> Uploading a build whose plugin name matches one you already installed **replaces that
+> install in place** — the app reuses the existing version directory rather than creating
+> a new one, so the recorded install path can still name the old version while the
+> contents are new. Harmless, but prefer the marketplace when you have one: a later
+> marketplace update will otherwise overwrite your upload.
+
 ### Codex — install the plugin
 
 ```bash
@@ -188,9 +207,10 @@ codex plugin marketplace add a1473838623/agent-beacon
 Then install `beacon` from the plugin browser (`codex /plugins`). The plugin brings the
 hooks *and* the MCP server, exactly like the Claude Code one — same repo, same daemon.
 
-> Codex does not trust plugin hooks automatically. After installing, run `/hooks`, review
-> Beacon's three hook definitions and trust them, or the hooks stay inert. (The MCP tools
-> work either way.)
+> **Codex does not trust plugin hooks automatically.** After installing, open the Hooks
+> page (or run `/hooks`), review Beacon's three definitions and trust them — until you do,
+> the hooks are inert and only the MCP tools work. Codex tracks trust by hash, so a Beacon
+> release that changes the hook definitions needs trusting again.
 
 **Or wire just the MCP server**, with no install at all:
 
@@ -228,10 +248,15 @@ Optionally add one line to your `AGENTS.md` so Codex uses it proactively:
 - ✅ **Clears its presence when a turn ends**, via the `Stop` hook — no stale rows.
 - ✅ **Visible to every other agent**, on the dashboard and in everyone else's warnings.
 
-One implementation note: Codex delivers a file edit as `apply_patch` with the whole patch in
-`tool_input.command`, not a path — and one call can touch several files. Beacon parses the
-patch envelope and reports each file, so a patch that collides on any one of them is caught
-(`src/patch.js`).
+Two implementation notes:
+
+- Codex delivers a file edit as `apply_patch` with the whole patch in `tool_input.command`,
+  not a path — and one call can touch several files. Beacon parses the patch envelope and
+  reports each file, so a patch that collides on any one of them is caught (`src/patch.js`).
+- Codex ignores a `"hooks": "./hooks/hooks.json"` string path in the manifest, even though
+  the docs describe that form. The hooks are inlined into `.codex-plugin/plugin.json`
+  instead, the only shape OpenAI's own bundled plugins use. That means the same three hooks
+  are declared twice, once per harness, so a test asserts the two copies stay in step.
 
 **Without the plugin** — MCP-only — Codex is still visible to everyone and can call
 `get_activity` / `report_activity`, but nothing is injected automatically; the model has to

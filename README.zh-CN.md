@@ -55,6 +55,22 @@ Beacon 是一个极小的本地服务,给每个 agent 一张共享的、实时�
 
 配置到此为止。插件同时带上 hook **和** MCP 服务器,守护进程会在第一次编辑时自行拉起 —— 不需要再跑任何命令。Beacon 会出现在 `/plugin` 和 `/mcp` 里,想关掉直接在那里关,不用改任何配置文件。
 
+### Claude 桌面版 —— 上传插件包
+
+桌面版没有终端里的 `/plugin` 面板。可以在它的插件浏览器里添加市场,
+也可以直接在 **设置 → 插件 → 添加 → 上传本地插件** 里传一个归档包。打包:
+
+```bash
+npm run pack:plugin      # → beacon-plugin.zip
+```
+
+用的是 `git archive`,所以插件文件在压缩包**根部**(`.claude-plugin/plugin.json` 直接在里面,
+不套一层文件夹),这正是那个对话框期望的结构。
+
+> 上传一个插件名与已装插件相同的包会**就地替换那份安装** —— 桌面版会复用已有的版本目录
+> 而不是新建一个,所以记录里的安装路径可能仍写着旧版本号,而内容已经是新的。这不影响使用,
+> 但有市场可用时优先走市场:否则之后市场一更新,会把你上传的这份覆盖掉。
+
 ### Codex —— 装插件
 
 ```bash
@@ -185,8 +201,9 @@ codex plugin marketplace add a1473838623/agent-beacon
 然后在插件浏览器里安装 `beacon`(`codex /plugins`)。插件同时带上 hook **和** MCP 服务器,
 和 Claude Code 那个插件是同一个仓库、同一个守护进程。
 
-> Codex 不会自动信任插件里的 hook。装完之后跑 `/hooks`,审阅并信任 Beacon 的三个 hook,
-> 否则 hook 不会执行(MCP 工具不受影响,两种情况下都能用)。
+> **Codex 不会自动信任插件里的 hook。** 装完之后打开「钩子」页面(或跑 `/hooks`),
+> 审阅并信任 Beacon 的三个定义 —— 在此之前 hook 是惰性的,只有 MCP 工具在工作。
+> Codex 按 hash 跟踪信任,所以之后 Beacon 更新若改动了 hook 定义,需要重新信任一次。
 
 **或者只接 MCP 服务器**,完全不需要安装任何东西:
 
@@ -217,9 +234,14 @@ args = ["-y", "beacon-agents", "mcp"]
 - ✅ **回合结束时清除自己的存在**(靠 `Stop` hook),面板上不会留下过期条目。
 - ✅ **对其他所有 agent 可见**,出现在面板和别人的警告里。
 
-一个实现细节:Codex 把文件编辑表达为 `apply_patch`,给 hook 的是
-`tool_input.command` 里的整块补丁而不是路径,而且一次调用可能改好几个文件。
-Beacon 会解析补丁信封并逐个文件上报,所以其中任何一个撞车都能被抓到(`src/patch.js`)。
+两个实现细节:
+
+- Codex 把文件编辑表达为 `apply_patch`,给 hook 的是 `tool_input.command` 里的整块补丁
+  而不是路径,而且一次调用可能改好几个文件。Beacon 会解析补丁信封并逐个文件上报,
+  所以其中任何一个撞车都能被抓到(`src/patch.js`)。
+- Codex 不认清单里 `"hooks": "./hooks/hooks.json"` 这种字符串路径写法(尽管文档是这么写的)。
+  hook 改为**内联**在 `.codex-plugin/plugin.json` 里,这是 OpenAI 自家 bundled 插件唯一在用的形态。
+  代价是同样三个 hook 要写两份(每个 harness 一份),所以加了个测试断言两份保持一致。
 
 **不装插件**(只接 MCP)时,Codex 依然对所有人可见、也能调
 `get_activity` / `report_activity`,但不会有任何东西被自动注入 —— 得靠模型自己想起来问。
