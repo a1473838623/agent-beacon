@@ -44,9 +44,30 @@ function Add-UserPath($dir) {
   $cur = [Environment]::GetEnvironmentVariable('Path', 'User')
   if (-not $cur) { $cur = '' }
   $parts = $cur -split ';' | Where-Object { $_ }
-  if ($parts -contains $dir) { return $false }
+  if ($parts -contains $dir) { return 'present' }
+
+  # cmd.exe truncates the combined machine+user PATH at ~2047 characters, and the user
+  # PATH comes last — so an entry appended to the end of a long PATH is silently cut off.
+  # The command then "is not found" even though the shim exists and the registry entry is
+  # right there, which is a genuinely baffling way to fail.
+  $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+  if (-not $machine) { $machine = '' }
+  if ($machine.Length + $cur.Length + $dir.Length + 2 -gt 2047) { return 'too-long' }
+
   [Environment]::SetEnvironmentVariable('Path', (($parts + $dir) -join ';'), 'User')
-  return $true
+  return 'added'
+}
+
+# A directory already on PATH beats a new entry when PATH is near the limit: it adds no
+# length, and being earlier in the list it survives truncation.
+function Find-ExistingBinOnPath {
+  $cur = [Environment]::GetEnvironmentVariable('Path', 'User')
+  if (-not $cur) { return $null }
+  foreach ($c in @((Join-Path $env:USERPROFILE ".local" | Join-Path -ChildPath "bin"),
+                   (Join-Path $env:USERPROFILE "bin"))) {
+    if (($cur -split ';') -contains $c) { return $c }
+  }
+  return $null
 }
 
 function Remove-UserPath($dir) {
@@ -134,9 +155,27 @@ New-Item -ItemType Directory -Path $ShimDir -Force | Out-Null
 "@echo off`r`nnode `"$InstallDir\bin\beacon.js`" %*" | Set-Content $ShimCmd -Encoding ASCII
 "node `"$InstallDir\bin\beacon.js`" @args"          | Set-Content $ShimPs1 -Encoding ASCII
 
-$pathAdded = Add-UserPath $ShimDir
-$env:Path  = "$ShimDir;$env:Path"   # so the rest of THIS script can call beacon
-if ($pathAdded) { Ok "Added $ShimDir to your PATH" } else { Ok 'PATH already configured' }
+$pathState = Add-UserPath $ShimDir
+if ($pathState -eq 'too-long') {
+  # Fall back to a bin directory already on PATH rather than adding an entry that would be
+  # truncated away. Installing a command that cannot be found is worse than saying so.
+  $existing = Find-ExistingBinOnPath
+  if ($existing) {
+    $ShimDir = $existing
+    $ShimCmd = Join-Path $ShimDir 'beacon.cmd'
+    $ShimPs1 = Join-Path $ShimDir 'beacon.ps1'
+  "@echo off`r`nnode `"$InstallDir\bin\beacon.js`" %*" | Set-Content $ShimCmd -Encoding ASCII
+  "node `"$InstallDir\bin\beacon.js`" @args"          | Set-Content $ShimPs1 -Encoding ASCII
+    Ok "PATH is near Windows' 2047-character limit; put the shim in $ShimDir instead"
+  } else {
+    Warn "Your PATH is at Windows' 2047-character limit, so no entry was added."
+    Warn "Run beacon as: $ShimCmd"
+    Warn 'Or shorten your PATH and re-run this installer.'
+  }
+} elseif ($pathState -eq 'added') { Ok "Added $ShimDir to your PATH" }
+else { Ok 'PATH already configured' }
+
+$env:Path = "$ShimDir;$env:Path"   # so the rest of THIS script can call beacon
 
 # ---------------------------------------------------------------- wire up
 if (-not $NoInit) {
@@ -146,5 +185,5 @@ if (-not $NoStart) { & $ShimCmd start -d }
 
 Write-Host ''
 Ok 'Done. Dashboard: http://127.0.0.1:4517'
-if ($pathAdded) { Warn 'Open a NEW terminal for the `beacon` command to be on PATH.' }
+if ($pathState -eq 'added') { Warn 'Open a NEW terminal for the `beacon` command to be on PATH.' }
 Write-Host ''

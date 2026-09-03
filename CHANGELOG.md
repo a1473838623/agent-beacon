@@ -2,6 +2,18 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## 0.10.4
+
+- **Fixed: `install.ps1` could add a PATH entry that Windows silently discards.** cmd.exe
+  truncates the combined machine+user PATH at ~2047 characters, and the user PATH comes
+  last, so on a machine already at the limit the newly appended entry is cut off. `beacon`
+  then reports "is not internal or external command" while the shim exists and the registry
+  entry is right there — a genuinely baffling failure. The installer now measures the
+  combined length first. If adding an entry would cross the limit it puts the shim in a bin
+  directory already on PATH (`~/.local/bin` or `~/bin`), which costs no length and sits
+  earlier so it survives truncation; with no such directory it says so plainly and prints
+  the full path to run instead of pretending the install succeeded.
+
 ## 0.10.3
 
 - **npm publishes from the release too.** A tag now produces the GitHub release and the npm
