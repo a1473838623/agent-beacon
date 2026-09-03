@@ -2,6 +2,30 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## 0.10.2
+
+- **Fixed: the Codex MCP server never started.** Codex does not expand
+  `${CLAUDE_PLUGIN_ROOT}`, despite the docs listing it as a compatibility alias. It passed
+  the literal string through as a directory name, and Codex's own log said so plainly:
+
+  ```
+  Error: Cannot find module 'C:\...\${CLAUDE_PLUGIN_ROOT}\mcp\server.js'
+  MCP server tools unavailable ... server_name=beacon
+  ```
+
+  The plugin listed `beacon` under "from plugins" in the UI the whole time, which is why
+  this looked like it worked. The Codex manifest now declares the server inline with a
+  relative path and `"cwd": "."` — no variable substitution at all, matching the only form
+  OpenAI's own bundled plugins use. `.mcp.json` keeps `${CLAUDE_PLUGIN_ROOT}` for Claude
+  Code, which does expand it.
+- **Releases are built by CI.** Pushing a `v*` tag now runs the tests, checks the tag
+  matches `package.json`, builds `beacon-plugin.zip` with `git archive`, takes the release
+  notes from that version's CHANGELOG section, and publishes a GitHub release with the
+  archive attached. The asset name carries no version so
+  `releases/latest/download/beacon-plugin.zip` stays valid across releases.
+- README documents installing from a release, both by uploading the archive to the Claude
+  desktop app and with `claude --plugin-url`.
+
 ## 0.10.1
 
 - **Fixed: Codex never registered Beacon's hooks.** The Codex manifest declared

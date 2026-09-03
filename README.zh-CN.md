@@ -67,6 +67,17 @@ npm run pack:plugin      # → beacon-plugin.zip
 用的是 `git archive`,所以插件文件在压缩包**根部**(`.claude-plugin/plugin.json` 直接在里面,
 不套一层文件夹),这正是那个对话框期望的结构。
 
+也可以不自己打包:每个打了 tag 的版本都会附带 `beacon-plugin.zip`,
+直接去 [Releases](https://github.com/a1473838623/agent-beacon/releases) 下载一个传上去即可。
+
+同一个包在命令行下也能用 —— 不用安装、不用市场,Claude Code 启动时拉取,只对本次会话生效:
+
+```bash
+claude --plugin-url https://github.com/a1473838623/agent-beacon/releases/latest/download/beacon-plugin.zip
+```
+
+本地文件也行:`claude --plugin-dir ./beacon-plugin.zip`。
+
 > 上传一个插件名与已装插件相同的包会**就地替换那份安装** —— 桌面版会复用已有的版本目录
 > 而不是新建一个,所以记录里的安装路径可能仍写着旧版本号,而内容已经是新的。这不影响使用,
 > 但有市场可用时优先走市场:否则之后市场一更新,会把你上传的这份覆盖掉。
@@ -239,9 +250,11 @@ args = ["-y", "beacon-agents", "mcp"]
 - Codex 把文件编辑表达为 `apply_patch`,给 hook 的是 `tool_input.command` 里的整块补丁
   而不是路径,而且一次调用可能改好几个文件。Beacon 会解析补丁信封并逐个文件上报,
   所以其中任何一个撞车都能被抓到(`src/patch.js`)。
-- Codex 不认清单里 `"hooks": "./hooks/hooks.json"` 这种字符串路径写法(尽管文档是这么写的)。
-  hook 改为**内联**在 `.codex-plugin/plugin.json` 里,这是 OpenAI 自家 bundled 插件唯一在用的形态。
-  代价是同样三个 hook 要写两份(每个 harness 一份),所以加了个测试断言两份保持一致。
+- Codex 不认清单里 `"hooks": "./hooks/hooks.json"` 这种字符串路径写法(尽管文档是这么写的),
+  也**不会展开 `${CLAUDE_PLUGIN_ROOT}`**(尽管文档说它作为兼容别名受支持)—— 它会把这个字面量
+  当成目录名。所以 Codex 清单里 hook 和 MCP 服务器都是**内联**的,后者用相对路径 + `"cwd": "."`
+  而不用任何变量,这是 OpenAI 自家 bundled 插件唯一在用的形态。代价是同样三个 hook 要写两份
+  (每个 harness 一份),所以加了个测试断言两份保持一致。
 
 **不装插件**(只接 MCP)时,Codex 依然对所有人可见、也能调
 `get_activity` / `report_activity`,但不会有任何东西被自动注入 —— 得靠模型自己想起来问。

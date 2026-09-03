@@ -71,6 +71,18 @@ npm run pack:plugin      # → beacon-plugin.zip
 It uses `git archive`, so the plugin files sit at the archive root (`.claude-plugin/
 plugin.json` directly inside, not nested in a folder), which is what the dialog expects.
 
+Or skip the build: every tagged release attaches `beacon-plugin.zip`, so you can
+download one from [Releases](https://github.com/a1473838623/agent-beacon/releases) and upload that.
+
+The same archive works from the CLI, with no install and no marketplace — Claude Code
+fetches it at startup and loads it for that session only:
+
+```bash
+claude --plugin-url https://github.com/a1473838623/agent-beacon/releases/latest/download/beacon-plugin.zip
+```
+
+A local copy works too: `claude --plugin-dir ./beacon-plugin.zip`.
+
 > Uploading a build whose plugin name matches one you already installed **replaces that
 > install in place** — the app reuses the existing version directory rather than creating
 > a new one, so the recorded install path can still name the old version while the
@@ -254,9 +266,12 @@ Two implementation notes:
   not a path — and one call can touch several files. Beacon parses the patch envelope and
   reports each file, so a patch that collides on any one of them is caught (`src/patch.js`).
 - Codex ignores a `"hooks": "./hooks/hooks.json"` string path in the manifest, even though
-  the docs describe that form. The hooks are inlined into `.codex-plugin/plugin.json`
-  instead, the only shape OpenAI's own bundled plugins use. That means the same three hooks
-  are declared twice, once per harness, so a test asserts the two copies stay in step.
+  the docs describe that form, and it does not expand `${CLAUDE_PLUGIN_ROOT}` either, even
+  though the docs list it as a compatibility alias — it passes the literal string through as
+  a directory name. So the Codex manifest declares its hooks and its MCP server inline, the
+  latter with a relative path and `"cwd": "."` rather than any variable, matching the only
+  form OpenAI's own bundled plugins use. The same hooks are therefore declared twice, once
+  per harness, and a test asserts the two copies stay in step.
 
 **Without the plugin** — MCP-only — Codex is still visible to everyone and can call
 `get_activity` / `report_activity`, but nothing is injected automatically; the model has to

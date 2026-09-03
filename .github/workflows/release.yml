@@ -1,0 +1,68 @@
+name: Release
+
+# Publishing a tag without a matching GitHub release leaves users with nowhere to download
+# the plugin archive from, so the release is built by the same push that creates the tag
+# rather than by hand afterwards.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build a release for (e.g. v0.10.1)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # A broken release is worse than a late one.
+      - run: npm test
+
+      - name: Resolve version
+        id: v
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      # The tag must match package.json, or the release ships something other than it claims.
+      - name: Check the tag matches package.json
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          if [ "$PKG" != "${{ steps.v.outputs.version }}" ]; then
+            echo "tag ${{ steps.v.outputs.tag }} does not match package.json $PKG" >&2
+            exit 1
+          fi
+
+      # git archive, so the archive holds exactly what is committed, with the plugin files at
+      # the archive root — the layout `--plugin-dir`, `--plugin-url` and the desktop app's
+      # upload dialog all expect. The asset name carries no version, so
+      # releases/latest/download/beacon-plugin.zip keeps working across releases and the
+      # README never has to be edited for a version bump.
+      - name: Build the plugin archive
+        run: git archive --format=zip -o beacon-plugin.zip "${{ steps.v.outputs.tag }}"
+
+      - name: Release notes from CHANGELOG
+        run: node scripts/changelog-section.js "${{ steps.v.outputs.version }}" > NOTES.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.v.outputs.tag }}" \
+            --title "${{ steps.v.outputs.tag }}" \
+            --notes-file NOTES.md \
+            beacon-plugin.zip
