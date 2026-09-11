@@ -2,6 +2,17 @@
 
 All notable changes to Beacon are documented here. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow [SemVer](https://semver.org).
 
+## 0.11.0
+
+- **Recognises DeepSeek Harness tools.** The harness names its tools in lowercase — `edit`,
+  `write`, `bash` — where Claude Code capitalises them, so Beacon saw none of its edits and
+  silently reported nothing. Tool names are now a set per harness rather than a chain of
+  equality checks, and `str_replace_editor` is handled too: it is the one edit tool that
+  calls its file argument `path` instead of `file_path`.
+- Beacon now covers three harnesses. Verified against real payload shapes for each: an
+  `edit` with `file_path`, a `str_replace_editor` with `path` colliding with it, and a
+  destructive `git checkout` through `bash` raising the working-tree guard.
+
 ## 0.10.6
 
 - **Retracts 0.10.5. Beacon's hooks do fire in Codex.** 0.10.5 concluded they did not, on

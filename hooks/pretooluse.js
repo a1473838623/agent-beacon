@@ -18,6 +18,12 @@ const PORT = Number(process.env.BEACON_PORT) || 4517;
 const BASE = `http://127.0.0.1:${PORT}`;
 const GUARD = process.env.BEACON_GUARD || 'warn'; // warn | ask | off
 
+// Every harness names its tools differently, so the sets are the compatibility surface:
+// Claude Code capitalises, DeepSeek Harness does not, and str_replace_editor is the one
+// edit tool that calls its file argument `path` rather than `file_path`.
+const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'edit', 'write', 'str_replace_editor']);
+const BASH_TOOLS = new Set(['Bash', 'bash']);
+
 // Classify a Bash command we care about. Returns { category, action, ttlMs } or null.
 function classifyBash(cmd) {
   // Destructive git — silently rewrites the shared tree / can lose uncommitted work.
@@ -83,16 +89,22 @@ async function main() {
 
   // A tool call can touch more than one file (Codex's apply_patch carries a whole patch),
   // so targets is a list even though the common case has exactly one entry.
+  //
+  // Tool names are per-harness: Claude Code capitalises them, DeepSeek Harness does not,
+  // and Codex delivers edits as one apply_patch. Matching the name is what decides whether
+  // an edit is seen at all, so an unknown harness reports nothing rather than misreporting.
   let category = 'edit', action, targets, ttlMs = 180000;
-  if (tool === 'Edit' || tool === 'Write' || tool === 'MultiEdit') {
-    if (!ti.file_path) return allow();
+  if (EDIT_TOOLS.has(tool)) {
+    // file_path everywhere except str_replace_editor, which names it path.
+    const file = ti.file_path || ti.path;
+    if (!file) return allow();
     action = 'editing';
-    targets = [ti.file_path];
+    targets = [file];
   } else if (tool === 'apply_patch') {
     targets = filesFromPatch(String(ti.command || ti.patch || ''), cwd);
     if (!targets.length) return allow();
     action = 'editing';
-  } else if (tool === 'Bash') {
+  } else if (BASH_TOOLS.has(tool)) {
     const c = classifyBash(String(ti.command || ''));
     if (!c) return allow();
     category = c.category; action = c.action; ttlMs = c.ttlMs;
@@ -105,7 +117,7 @@ async function main() {
 
   // Edit presence is momentary — short TTL so it fades if the session goes idle without a
   // Stop event; the Stop hook clears it promptly. Build/deploy get a longer backstop.
-  const detail = tool === 'Bash' ? String(ti.command || '').slice(0, 120) : '';
+  const detail = BASH_TOOLS.has(tool) ? String(ti.command || '').slice(0, 120) : '';
   const results = await Promise.all(targets.map((target) => report({
     actor, actorLabel, action, target, cwd,
     promptId: input.prompt_id || '',
